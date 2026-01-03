@@ -18,9 +18,19 @@ export default function DashboardPage({ user, onSignOut }) {
     return () => clearInterval(interval);
   }, []);
 
+  const getAuthToken = () => {
+    // Get the last authenticated user ID
+    const lastAuthUser = localStorage.getItem('CognitoIdentityServiceProvider.hga8jtohtcv20lop0djlauqsv.LastAuthUser');
+    if (!lastAuthUser) return null;
+    
+    // Construct the idToken key
+    const idTokenKey = `CognitoIdentityServiceProvider.hga8jtohtcv20lop0djlauqsv.${lastAuthUser}.idToken`;
+    return localStorage.getItem(idTokenKey);
+  };
+
   const loadStats = async () => {
     try {
-      const authToken = localStorage.getItem('authToken');
+      const authToken = getAuthToken();
       if (!authToken) return;
 
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/stats`, {
@@ -43,9 +53,9 @@ export default function DashboardPage({ user, onSignOut }) {
   };
 
   const sendCommand = async (command) => {
-    const authToken = localStorage.getItem('authToken');
+    const authToken = getAuthToken();
     if (!authToken) {
-      alert('Not authenticated');
+      alert('Not authenticated. Please login first.');
       return;
     }
 
