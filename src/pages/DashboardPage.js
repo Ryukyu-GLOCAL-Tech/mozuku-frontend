@@ -139,14 +139,37 @@ export default function DashboardPage({ user, onSignOut }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Detections API Response:', JSON.stringify(data, null, 2));
-        setDetections(data.frames || []);
-        if (data.frames && data.frames.length > 0 && !selectedDetection) {
-          console.log('Setting first detection as selected:', data.frames[0]);
-          setSelectedDetection(data.frames[0]);
+        console.log('Raw API Response:', JSON.stringify(data, null, 2));
+        
+        // Handle raw Lambda response format (with statusCode and body)
+        let frameData = data;
+        if (data.statusCode && data.body) {
+          console.warn('Received raw Lambda response format, parsing body...');
+          try {
+            frameData = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+            console.log('Parsed body:', JSON.stringify(frameData, null, 2));
+          } catch (e) {
+            console.error('Failed to parse body:', e);
+            return;
+          }
+        }
+        
+        // Check if error is in the response
+        if (frameData.error) {
+          console.error('API returned error:', frameData.error);
+          return;
+        }
+        
+        console.log('Detections API Response:', JSON.stringify(frameData, null, 2));
+        setDetections(frameData.frames || []);
+        if (frameData.frames && frameData.frames.length > 0 && !selectedDetection) {
+          console.log('Setting first detection as selected:', frameData.frames[0]);
+          setSelectedDetection(frameData.frames[0]);
         }
       } else {
         console.error('API Error:', response.status, response.statusText);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
       }
     } catch (err) {
       console.error('Error loading detections:', err);
