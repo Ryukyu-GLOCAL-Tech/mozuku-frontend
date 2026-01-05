@@ -13,6 +13,8 @@ export default function DashboardPage({ user, onSignOut }) {
   const [detections, setDetections] = useState([]);
   const [selectedDetection, setSelectedDetection] = useState(null);
   const [loadingDetections, setLoadingDetections] = useState(false);
+  const [hasMoreFrames, setHasMoreFrames] = useState(true);
+  const [totalFrames, setTotalFrames] = useState(0);
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -123,12 +125,13 @@ export default function DashboardPage({ user, onSignOut }) {
     }
   };
 
-  const loadDetections = async () => {
+  const loadDetections = async (isLoadMore = false) => {
     try {
       const authToken = getAuthToken();
       if (!authToken) return;
 
-      const url = `${process.env.REACT_APP_API_BASE_URL}/impurities?userId=${user.username}&limit=5&includeFrames=true`;
+      const offset = isLoadMore ? detections.length : 0;
+      const url = `${process.env.REACT_APP_API_BASE_URL}/impurities?userId=${user.username}&limit=50&offset=${offset}&includeFrames=true`;
       console.log('Fetching detections from:', url);
 
       const response = await fetch(url, {
@@ -161,11 +164,23 @@ export default function DashboardPage({ user, onSignOut }) {
         }
         
         console.log('Detections API Response:', JSON.stringify(frameData, null, 2));
-        setDetections(frameData.frames || []);
-        if (frameData.frames && frameData.frames.length > 0 && !selectedDetection) {
-          console.log('Setting first detection as selected:', frameData.frames[0]);
-          setSelectedDetection(frameData.frames[0]);
+        
+        const newFrames = frameData.frames || [];
+        if (isLoadMore) {
+          // Append new frames to existing list
+          setDetections([...detections, ...newFrames]);
+        } else {
+          // Replace with fresh frames
+          setDetections(newFrames);
+          if (newFrames.length > 0 && !selectedDetection) {
+            console.log('Setting first detection as selected:', newFrames[0]);
+            setSelectedDetection(newFrames[0]);
+          }
         }
+        
+        // Update pagination state
+        setTotalFrames(frameData.total || 0);
+        setHasMoreFrames((newFrames.length + (isLoadMore ? detections.length : 0)) < (frameData.total || 0));
       } else {
         console.error('API Error:', response.status, response.statusText);
         const errorData = await response.json();
@@ -174,6 +189,10 @@ export default function DashboardPage({ user, onSignOut }) {
     } catch (err) {
       console.error('Error loading detections:', err);
     }
+  };
+
+  const loadMoreFrames = () => {
+    loadDetections(true);
   };
 
   // Draw bounding boxes on canvas
@@ -707,7 +726,7 @@ export default function DashboardPage({ user, onSignOut }) {
           {detections && detections.length > 0 && (
             <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '8px' }}>
-                Select Frame ({detections.length} available):
+                Select Frame ({detections.length} of {totalFrames} available):
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {detections.map((det, idx) => (
@@ -732,6 +751,31 @@ export default function DashboardPage({ user, onSignOut }) {
                   </button>
                 ))}
               </div>
+              
+              {/* Load More Button */}
+              {hasMoreFrames && (
+                <button
+                  onClick={loadMoreFrames}
+                  disabled={loadingDetections}
+                  style={{
+                    marginTop: '12px',
+                    padding: '8px 16px',
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: loadingDetections ? 'not-allowed' : 'pointer',
+                    opacity: loadingDetections ? 0.6 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => !loadingDetections && (e.target.style.opacity = '0.8')}
+                  onMouseOut={(e) => !loadingDetections && (e.target.style.opacity = '1')}
+                >
+                  {loadingDetections ? '⏳ Loading...' : '📥 Load More Frames'}
+                </button>
+              )}
             </div>
           )}
           
