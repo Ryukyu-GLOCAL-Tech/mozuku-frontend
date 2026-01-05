@@ -29,12 +29,13 @@ export default function DashboardPage({ user, onSignOut }) {
 
 
   const getAuthToken = () => {
-    // Get the last authenticated user ID
-    const lastAuthUser = localStorage.getItem('CognitoIdentityServiceProvider.hga8jtohtcv20lop0djlauqsv.LastAuthUser');
+    // Get the last authenticated user ID using the configured Cognito Client ID
+    const cognitoClientId = process.env.REACT_APP_COGNITO_CLIENT_ID || 'hga8jtohtcv20lop0djlauqsv';
+    const lastAuthUser = localStorage.getItem(`CognitoIdentityServiceProvider.${cognitoClientId}.LastAuthUser`);
     if (!lastAuthUser) return null;
     
     // Construct the idToken key
-    const idTokenKey = `CognitoIdentityServiceProvider.hga8jtohtcv20lop0djlauqsv.${lastAuthUser}.idToken`;
+    const idTokenKey = `CognitoIdentityServiceProvider.${cognitoClientId}.${lastAuthUser}.idToken`;
     return localStorage.getItem(idTokenKey);
   };
 
