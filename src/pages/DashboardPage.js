@@ -604,121 +604,90 @@ export default function DashboardPage({ user, onSignOut }) {
             marginTop: 0
           }}>📷 Detection Results</h2>
           
-          {detections.length === 0 ? (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '40px 20px',
-              color: '#6b7280',
-              textAlign: 'center'
-            }}>
-              <div>
-                <div style={{ fontSize: '48px', marginBottom: '8px' }}>🔍</div>
-                <p style={{ margin: 0 }}>No detections yet</p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>Start the camera to begin detection</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Detection List */}
+          {/* Two Column Layout */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '24px'
+          }}>
+            {/* Full Frame */}
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                Full Camera Frame
+              </h3>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 2fr',
-                gap: '20px',
-                marginBottom: '20px'
+                width: '100%',
+                height: '500px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '6px',
+                border: '2px dashed #d1d5db',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#6b7280',
+                fontSize: '14px',
+                overflow: 'hidden'
               }}>
-                {/* Timeline */}
-                <div style={{
-                  borderRight: '2px solid #e5e7eb',
-                  paddingRight: '12px',
-                  maxHeight: '600px',
-                  overflowY: 'auto'
-                }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>Recent Frames</h3>
-                  {detections.map((detection, idx) => (
-                    <div
-                      key={detection.frameId}
-                      onClick={() => setSelectedDetection(detection)}
-                      style={{
-                        padding: '12px',
-                        marginBottom: '8px',
-                        backgroundColor: selectedDetection?.frameId === detection.frameId ? '#dbeafe' : '#f9fafb',
-                        border: selectedDetection?.frameId === detection.frameId ? '2px solid #2563eb' : '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseOver={(e) => !selectedDetection?.frameId === detection.frameId && (e.currentTarget.style.backgroundColor = '#f3f4f6')}
-                      onMouseOut={(e) => !selectedDetection?.frameId === detection.frameId && (e.currentTarget.style.backgroundColor = '#f9fafb')}
-                    >
-                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>
-                        {new Date(detection.timestamp).toLocaleTimeString()}
-                      </p>
-                      <p style={{ fontSize: '11px', color: '#6b7280', margin: 0 }}>
-                        {detection.detectionCount} impurit{detection.detectionCount !== 1 ? 'ies' : 'y'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Detail View */}
-                {selectedDetection && (
-                  <div>
-                    <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>
-                      Frame with Detections
-                    </h3>
-                    <div style={{
+                {selectedDetection && selectedDetection.fullImageUrl ? (
+                  <img
+                    src={selectedDetection.fullImageUrl}
+                    alt="Frame with detections"
+                    style={{
                       width: '100%',
-                      backgroundColor: '#f3f4f6',
-                      borderRadius: '6px',
-                      border: '2px solid #d1d5db',
-                      overflow: 'hidden'
-                    }}>
-                      <img
-                        src={selectedDetection.fullImageUrl}
-                        alt="Frame with detections"
-                        style={{
-                          width: '100%',
-                          height: 'auto',
-                          display: 'block'
-                        }}
-                      />
-                    </div>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '8px 0 0 0' }}>
-                      Detected: {selectedDetection.detectionCount} impurit{selectedDetection.detectionCount !== 1 ? 'ies' : 'y'}
-                    </p>
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '8px' }}>📹</div>
+                    <p style={{ margin: 0 }}>Waiting for frame data...</p>
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Cropped Impurities */}
-              {selectedDetection && selectedDetection.impurities && selectedDetection.impurities.length > 0 && (
-                <div style={{
-                  borderTop: '2px solid #e5e7eb',
-                  paddingTop: '16px'
-                }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '12px', marginTop: 0 }}>
-                    Detected Impurities (High Resolution)
-                  </h3>
+            {/* Detected Objects */}
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                Detected Impurities (High Res)
+              </h3>
+              <div style={{
+                width: '100%',
+                height: '500px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '6px',
+                border: '2px dashed #d1d5db',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                color: '#6b7280',
+                fontSize: '14px',
+                overflow: 'auto',
+                padding: '12px'
+              }}>
+                {selectedDetection && selectedDetection.impurities && selectedDetection.impurities.length > 0 ? (
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                    gap: '12px'
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                    gap: '12px',
+                    width: '100%'
                   }}>
                     {selectedDetection.impurities.map((impurity, idx) => (
                       <div key={impurity.impurityId || idx} style={{
                         borderRadius: '6px',
                         overflow: 'hidden',
                         border: '1px solid #e5e7eb',
-                        backgroundColor: '#f9fafb'
+                        backgroundColor: 'white',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                       }}>
                         <img
                           src={impurity.imageUrl}
                           alt={`Impurity ${idx + 1}`}
                           style={{
                             width: '100%',
-                            height: '150px',
+                            height: '140px',
                             objectFit: 'cover',
                             display: 'block'
                           }}
@@ -734,10 +703,16 @@ export default function DashboardPage({ user, onSignOut }) {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                ) : (
+                  <div style={{ textAlign: 'center', width: '100%' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '8px' }}>🔍</div>
+                    <p style={{ margin: 0 }}>Detected objects appear here</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>(Cropped & Enhanced Resolution)</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
