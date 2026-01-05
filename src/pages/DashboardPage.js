@@ -9,14 +9,24 @@ export default function DashboardPage({ user, onSignOut }) {
   const [cameraBringupRunning, setCameraBringupRunning] = useState(false);
   const [sdmBridgeRunning, setSdmBridgeRunning] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [modelUrl, setModelUrl] = useState('');  // State for S3 model URL
+  const [detections, setDetections] = useState([]);
+  const [selectedDetection, setSelectedDetection] = useState(null);
+  const [loadingDetections, setLoadingDetections] = useState(false);
 
   useEffect(() => {
     // Load stats when component mounts
     loadStats();
+    loadDetections();
     // Refresh stats every 5 seconds
     const interval = setInterval(loadStats, 5000);
-    return () => clearInterval(interval);
+    const detectionInterval = setInterval(loadDetections, 10000);
+    return () => {
+      clearInterval(interval);
+      clearInterval(detectionInterval);
+    };
   }, []);
+
 
   const getAuthToken = () => {
     // Get the last authenticated user ID
@@ -63,16 +73,23 @@ export default function DashboardPage({ user, onSignOut }) {
     try {
       const jobId = `job-${Date.now()}`;
       
+      const payload = {
+        command: command,
+        jobId: jobId
+      };
+      
+      // Add model URL if starting camera and URL is provided
+      if ((command === 'start_camera_bringup' || command === 'start_all') && modelUrl.trim()) {
+        payload.modelUrl = modelUrl.trim();
+      }
+      
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/launch-control`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          command: command,
-          jobId: jobId
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -101,6 +118,32 @@ export default function DashboardPage({ user, onSignOut }) {
       alert('Failed to send command');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDetections = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) return;
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/get-impurities?userId=${user.username}&limit=5&includeFrames=true`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setDetections(data.frames || []);
+        if (data.frames && data.frames.length > 0 && !selectedDetection) {
+          setSelectedDetection(data.frames[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading detections:', err);
     }
   };
 
@@ -327,6 +370,48 @@ export default function DashboardPage({ user, onSignOut }) {
             marginTop: 0
           }}>🤖 ROS2 Launch Control</h2>
 
+          {/* Model URL Configuration */}
+          <div style={{
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '24px'
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '8px'
+            }}>
+              📦 YOLOv8 Model URL (S3 or HTTPS)
+            </label>
+            <input
+              type="text"
+              value={modelUrl}
+              onChange={(e) => setModelUrl(e.target.value)}
+              placeholder="e.g., s3://my-bucket/models/best.pt or https://example.com/best.pt"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontFamily: 'monospace',
+                boxSizing: 'border-box',
+                marginBottom: '8px'
+              }}
+            />
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              margin: 0
+            }}>
+              💡 Leave empty to use default model (best.pt from package resources)
+            </p>
+          </div>
+
           {/* Launch File 1: Camera Bringup */}
           <div style={{
             border: '1px solid #e5e7eb',
@@ -519,62 +604,140 @@ export default function DashboardPage({ user, onSignOut }) {
             marginTop: 0
           }}>📷 Detection Results</h2>
           
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
-            gap: '20px'
-          }}>
-            {/* Full Frame */}
-            <div>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Full Camera Frame
-              </h3>
-              <div style={{
-                width: '100%',
-                height: '500px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '6px',
-                border: '2px dashed #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#6b7280',
-                fontSize: '14px',
-                overflow: 'hidden'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>📹</div>
-                  <p style={{ margin: 0 }}>Waiting for frame data...</p>
-                </div>
+          {detections.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px 20px',
+              color: '#6b7280',
+              textAlign: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '48px', marginBottom: '8px' }}>🔍</div>
+                <p style={{ margin: 0 }}>No detections yet</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>Start the camera to begin detection</p>
               </div>
             </div>
+          ) : (
+            <>
+              {/* Detection List */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 2fr',
+                gap: '20px',
+                marginBottom: '20px'
+              }}>
+                {/* Timeline */}
+                <div style={{
+                  borderRight: '2px solid #e5e7eb',
+                  paddingRight: '12px',
+                  maxHeight: '600px',
+                  overflowY: 'auto'
+                }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>Recent Frames</h3>
+                  {detections.map((detection, idx) => (
+                    <div
+                      key={detection.frameId}
+                      onClick={() => setSelectedDetection(detection)}
+                      style={{
+                        padding: '12px',
+                        marginBottom: '8px',
+                        backgroundColor: selectedDetection?.frameId === detection.frameId ? '#dbeafe' : '#f9fafb',
+                        border: selectedDetection?.frameId === detection.frameId ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => !selectedDetection?.frameId === detection.frameId && (e.currentTarget.style.backgroundColor = '#f3f4f6')}
+                      onMouseOut={(e) => !selectedDetection?.frameId === detection.frameId && (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                    >
+                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>
+                        {new Date(detection.timestamp).toLocaleTimeString()}
+                      </p>
+                      <p style={{ fontSize: '11px', color: '#6b7280', margin: 0 }}>
+                        {detection.detectionCount} impurit{detection.detectionCount !== 1 ? 'ies' : 'y'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
 
-            {/* Detected Objects */}
-            <div>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Detected Impurities (High Res)
-              </h3>
-              <div style={{
-                width: '100%',
-                height: '500px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '6px',
-                border: '2px dashed #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#6b7280',
-                fontSize: '14px',
-                overflow: 'auto'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>🔍</div>
-                  <p style={{ margin: 0 }}>Detected objects appear here</p>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>(Cropped & Enhanced Resolution)</p>
-                </div>
+                {/* Detail View */}
+                {selectedDetection && (
+                  <div>
+                    <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>
+                      Frame with Detections
+                    </h3>
+                    <div style={{
+                      width: '100%',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '6px',
+                      border: '2px solid #d1d5db',
+                      overflow: 'hidden'
+                    }}>
+                      <img
+                        src={selectedDetection.fullImageUrl}
+                        alt="Frame with detections"
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block'
+                        }}
+                      />
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '8px 0 0 0' }}>
+                      Detected: {selectedDetection.detectionCount} impurit{selectedDetection.detectionCount !== 1 ? 'ies' : 'y'}
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+
+              {/* Cropped Impurities */}
+              {selectedDetection && selectedDetection.impurities && selectedDetection.impurities.length > 0 && (
+                <div style={{
+                  borderTop: '2px solid #e5e7eb',
+                  paddingTop: '16px'
+                }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '12px', marginTop: 0 }}>
+                    Detected Impurities (High Resolution)
+                  </h3>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '12px'
+                  }}>
+                    {selectedDetection.impurities.map((impurity, idx) => (
+                      <div key={impurity.impurityId || idx} style={{
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: '#f9fafb'
+                      }}>
+                        <img
+                          src={impurity.imageUrl}
+                          alt={`Impurity ${idx + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '150px',
+                            objectFit: 'cover',
+                            display: 'block'
+                          }}
+                        />
+                        <div style={{ padding: '8px' }}>
+                          <p style={{ fontSize: '11px', fontWeight: '600', color: '#1f2937', margin: '0 0 2px 0' }}>
+                            {impurity.label}
+                          </p>
+                          <p style={{ fontSize: '10px', color: '#6b7280', margin: 0 }}>
+                            {(impurity.confidence * 100).toFixed(1)}% confidence
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>
