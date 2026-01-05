@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export default function DashboardPage({ user, onSignOut }) {
   const [stats, setStats] = useState({
@@ -13,6 +13,7 @@ export default function DashboardPage({ user, onSignOut }) {
   const [detections, setDetections] = useState([]);
   const [selectedDetection, setSelectedDetection] = useState(null);
   const [loadingDetections, setLoadingDetections] = useState(false);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     // Load stats when component mounts
@@ -147,6 +148,54 @@ export default function DashboardPage({ user, onSignOut }) {
       console.error('Error loading detections:', err);
     }
   };
+
+  // Draw bounding boxes on canvas
+  useEffect(() => {
+    if (!selectedDetection || !selectedDetection.fullImageUrl || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw the image
+      ctx.drawImage(img, 0, 0);
+      
+      // Draw bounding boxes if detections exist
+      const detectionsList = selectedDetection.detections || [];
+      if (detectionsList && detectionsList.length > 0) {
+        detectionsList.forEach((detection, idx) => {
+          const bbox = detection.bbox;
+          if (bbox && bbox.length >= 4) {
+            const [x1, y1, x2, y2] = bbox;
+            
+            // Draw rectangle
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            
+            // Draw label background
+            ctx.fillStyle = '#ff0000';
+            ctx.font = 'bold 14px Arial';
+            const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
+            const textMetrics = ctx.measureText(label);
+            ctx.fillRect(x1, y1 - 25, textMetrics.width + 10, 25);
+            
+            // Draw label text
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(label, x1 + 5, y1 - 8);
+          }
+        });
+      }
+    };
+    
+    img.crossOrigin = 'anonymous';
+    img.src = selectedDetection.fullImageUrl;
+  }, [selectedDetection]);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -614,7 +663,7 @@ export default function DashboardPage({ user, onSignOut }) {
             {/* Full Frame */}
             <div>
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Full Camera Frame
+                Full Camera Frame with Detections
               </h3>
               <div style={{
                 width: '100%',
@@ -627,18 +676,18 @@ export default function DashboardPage({ user, onSignOut }) {
                 justifyContent: 'center',
                 color: '#6b7280',
                 fontSize: '14px',
-                overflow: 'hidden'
+                overflow: 'auto',
+                position: 'relative'
               }}>
                 {selectedDetection && selectedDetection.fullImageUrl ? (
-                  <img
-                    src={selectedDetection.fullImageUrl}
-                    alt="Frame with detections"
+                  <canvas
+                    ref={canvasRef}
                     style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
                       display: 'block'
                     }}
+                    alt="Frame with detections"
                   />
                 ) : (
                   <div style={{ textAlign: 'center' }}>
@@ -647,6 +696,11 @@ export default function DashboardPage({ user, onSignOut }) {
                   </div>
                 )}
               </div>
+              {selectedDetection && selectedDetection.detectionCount > 0 && (
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                  🎯 {selectedDetection.detectionCount} detection(s) found
+                </p>
+              )}
             </div>
 
             {/* Detected Objects */}
@@ -684,7 +738,7 @@ export default function DashboardPage({ user, onSignOut }) {
                         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                       }}>
                         <img
-                          src={impurity.imageUrl}
+                          src={impurity.presignedUrl || impurity.imageUrl}
                           alt={`Impurity ${idx + 1}`}
                           style={{
                             width: '100%',
@@ -692,10 +746,14 @@ export default function DashboardPage({ user, onSignOut }) {
                             objectFit: 'cover',
                             display: 'block'
                           }}
+                          onError={(e) => {
+                            e.target.style.backgroundColor = '#f3f4f6';
+                            e.target.style.display = 'none';
+                          }}
                         />
                         <div style={{ padding: '8px' }}>
                           <p style={{ fontSize: '11px', fontWeight: '600', color: '#1f2937', margin: '0 0 2px 0' }}>
-                            {impurity.label}
+                            {impurity.label || 'Impurity'}
                           </p>
                           <p style={{ fontSize: '10px', color: '#6b7280', margin: 0 }}>
                             {(impurity.confidence * 100).toFixed(1)}% confidence
