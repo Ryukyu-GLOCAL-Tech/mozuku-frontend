@@ -128,21 +128,25 @@ export default function DashboardPage({ user, onSignOut }) {
       const authToken = getAuthToken();
       if (!authToken) return;
 
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/impurities?userId=${user.username}&limit=5&includeFrames=true`,
-        {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
+      const url = `${process.env.REACT_APP_API_BASE_URL}/impurities?userId=${user.username}&limit=5&includeFrames=true`;
+      console.log('Fetching detections from:', url);
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
         }
-      );
+      });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Detections API Response:', JSON.stringify(data, null, 2));
         setDetections(data.frames || []);
         if (data.frames && data.frames.length > 0 && !selectedDetection) {
+          console.log('Setting first detection as selected:', data.frames[0]);
           setSelectedDetection(data.frames[0]);
         }
+      } else {
+        console.error('API Error:', response.status, response.statusText);
       }
     } catch (err) {
       console.error('Error loading detections:', err);
@@ -151,13 +155,24 @@ export default function DashboardPage({ user, onSignOut }) {
 
   // Draw bounding boxes on canvas
   useEffect(() => {
-    if (!selectedDetection || !selectedDetection.fullImageUrl || !canvasRef.current) return;
+    if (!selectedDetection || !selectedDetection.fullImageUrl || !canvasRef.current) {
+      console.log('Canvas effect skipped:', { selectedDetection: !!selectedDetection, fullImageUrl: selectedDetection?.fullImageUrl, canvasRef: !!canvasRef.current });
+      return;
+    }
+
+    console.log('Drawing frame with detections:', {
+      frameId: selectedDetection.frameId,
+      imageUrl: selectedDetection.fullImageUrl,
+      detectionCount: selectedDetection.detectionCount,
+      detections: selectedDetection.detections
+    });
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const img = new Image();
     
     img.onload = () => {
+      console.log('Image loaded:', { width: img.width, height: img.height });
       // Set canvas size to match image
       canvas.width = img.width;
       canvas.height = img.height;
@@ -167,9 +182,13 @@ export default function DashboardPage({ user, onSignOut }) {
       
       // Draw bounding boxes if detections exist
       const detectionsList = selectedDetection.detections || [];
+      console.log('Drawing detections:', detectionsList);
+      
       if (detectionsList && detectionsList.length > 0) {
         detectionsList.forEach((detection, idx) => {
           const bbox = detection.bbox;
+          console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
+          
           if (bbox && bbox.length >= 4) {
             const [x1, y1, x2, y2] = bbox;
             
@@ -190,10 +209,17 @@ export default function DashboardPage({ user, onSignOut }) {
             ctx.fillText(label, x1 + 5, y1 - 8);
           }
         });
+      } else {
+        console.log('No detections found in selectedDetection');
       }
     };
     
+    img.onerror = (err) => {
+      console.error('Failed to load image:', err);
+    };
+    
     img.crossOrigin = 'anonymous';
+    console.log('Setting image src:', selectedDetection.fullImageUrl);
     img.src = selectedDetection.fullImageUrl;
   }, [selectedDetection]);
 
@@ -654,6 +680,38 @@ export default function DashboardPage({ user, onSignOut }) {
             marginTop: 0
           }}>📷 Detection Results</h2>
           
+          {/* Detection Selector */}
+          {detections && detections.length > 0 && (
+            <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '8px' }}>
+                Select Frame ({detections.length} available):
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {detections.map((det, idx) => (
+                  <button
+                    key={det.frameId}
+                    onClick={() => setSelectedDetection(det)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: selectedDetection?.frameId === det.frameId ? '#2563eb' : '#e5e7eb',
+                      color: selectedDetection?.frameId === det.frameId ? 'white' : '#374151',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.opacity = '0.8'}
+                    onMouseOut={(e) => e.target.style.opacity = '1'}
+                  >
+                    Frame {idx + 1} ({det.detectionCount} detections)
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           {/* Two Column Layout */}
           <div style={{
             display: 'grid',
@@ -680,15 +738,23 @@ export default function DashboardPage({ user, onSignOut }) {
                 position: 'relative'
               }}>
                 {selectedDetection && selectedDetection.fullImageUrl ? (
-                  <canvas
-                    ref={canvasRef}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      display: 'block'
-                    }}
-                    alt="Frame with detections"
-                  />
+                  <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <canvas
+                      ref={canvasRef}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        display: 'block',
+                        border: selectedDetection.detections && selectedDetection.detections.length > 0 ? '2px solid #10b981' : 'none'
+                      }}
+                      alt="Frame with detections"
+                    />
+                    {selectedDetection.detections && selectedDetection.detections.length === 0 && (
+                      <p style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', margin: 0 }}>
+                        ℹ️ Frame loaded (No detections)
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '48px', marginBottom: '8px' }}>📹</div>
@@ -700,6 +766,15 @@ export default function DashboardPage({ user, onSignOut }) {
                 <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
                   🎯 {selectedDetection.detectionCount} detection(s) found
                 </p>
+              )}
+              {selectedDetection && (
+                <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f9ff', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', color: '#1e40af', maxHeight: '100px', overflow: 'auto' }}>
+                  <p style={{ margin: '0 0 4px 0', fontWeight: '600' }}>Debug Info:</p>
+                  <p style={{ margin: '0 0 2px 0' }}>Frame: {selectedDetection.frameId?.substring(0, 8)}...</p>
+                  <p style={{ margin: '0 0 2px 0' }}>Detections: {selectedDetection.detections?.length || 0}</p>
+                  <p style={{ margin: '0 0 2px 0' }}>Impurities: {selectedDetection.impurities?.length || 0}</p>
+                  <p style={{ margin: 0 }}>URL: {selectedDetection.fullImageUrl ? '✓ Present' : '✗ Missing'}</p>
+                </div>
               )}
             </div>
 
