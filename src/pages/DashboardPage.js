@@ -127,7 +127,7 @@ export default function DashboardPage({ user, onSignOut }) {
       if (!authToken) return;
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/get-impurities?userId=${user.username}&limit=5&includeFrames=true`,
+        `${process.env.REACT_APP_API_BASE_URL}/impurities?userId=${user.username}&limit=5&includeFrames=true`,
         {
           headers: {
             'Authorization': `Bearer ${authToken}`
