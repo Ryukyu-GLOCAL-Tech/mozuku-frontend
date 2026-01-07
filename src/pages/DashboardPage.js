@@ -15,6 +15,8 @@ export default function DashboardPage({ user, onSignOut }) {
   const [loadingDetections, setLoadingDetections] = useState(false);
   const [hasMoreFrames, setHasMoreFrames] = useState(true);
   const [totalFrames, setTotalFrames] = useState(0);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState('');
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -747,7 +749,7 @@ export default function DashboardPage({ user, onSignOut }) {
                     onMouseOver={(e) => e.target.style.opacity = '0.8'}
                     onMouseOut={(e) => e.target.style.opacity = '1'}
                   >
-                    Frame {idx + 1} ({det.detectionCount} detections)
+                    Frame {idx + 1} ({det.impurities?.length || det.detectionCount || 0} {(det.impurities?.length || det.detectionCount || 0) === 1 ? 'impurity' : 'impurities'})
                   </button>
                 ))}
               </div>
@@ -805,16 +807,23 @@ export default function DashboardPage({ user, onSignOut }) {
                 position: 'relative'
               }}>
                 {selectedDetection && selectedDetection.fullImageUrl ? (
-                  <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <canvas
                       ref={canvasRef}
                       style={{
                         maxWidth: '100%',
                         maxHeight: '100%',
                         display: 'block',
-                        border: selectedDetection.detections && selectedDetection.detections.length > 0 ? '2px solid #10b981' : 'none'
+                        border: selectedDetection.detections && selectedDetection.detections.length > 0 ? '2px solid #10b981' : 'none',
+                        cursor: 'pointer'
                       }}
                       alt="Frame with detections"
+                      onClick={() => {
+                        if (selectedDetection && selectedDetection.fullImageUrl) {
+                          setModalImageUrl(selectedDetection.fullImageUrl);
+                          setImageModalOpen(true);
+                        }
+                      }}
                     />
                     {selectedDetection.detections && selectedDetection.detections.length === 0 && (
                       <p style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', margin: 0 }}>
@@ -835,12 +844,24 @@ export default function DashboardPage({ user, onSignOut }) {
                 </p>
               )}
               {selectedDetection && (
-                <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f9ff', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', color: '#1e40af', maxHeight: '100px', overflow: 'auto' }}>
-                  <p style={{ margin: '0 0 4px 0', fontWeight: '600' }}>Debug Info:</p>
-                  <p style={{ margin: '0 0 2px 0' }}>Frame: {selectedDetection.frameId?.substring(0, 8)}...</p>
-                  <p style={{ margin: '0 0 2px 0' }}>Detections: {selectedDetection.detections?.length || 0}</p>
-                  <p style={{ margin: '0 0 2px 0' }}>Impurities: {selectedDetection.impurities?.length || 0}</p>
-                  <p style={{ margin: 0 }}>URL: {selectedDetection.fullImageUrl ? '✓ Present' : '✗ Missing'}</p>
+                <div style={{ marginTop: '8px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '6px', fontSize: '12px', fontFamily: 'monospace', color: '#1e40af', border: '1px solid #bfdbfe' }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1e40af', fontSize: '13px' }}>Debug Info:</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', color: '#6b7280' }}>Frame ID:</p>
+                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>{selectedDetection.frameId?.substring(0, 16) || 'N/A'}...</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', color: '#6b7280' }}>Impurities:</p>
+                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>{selectedDetection.impurities?.length || selectedDetection.detectionCount || 0}</p>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #bfdbfe' }}>
+                    <p style={{ margin: '0 0 2px 0', color: '#6b7280' }}>Image URL:</p>
+                    <p style={{ margin: 0, color: selectedDetection.fullImageUrl ? '#10b981' : '#ef4444', fontWeight: '500' }}>
+                      {selectedDetection.fullImageUrl ? '✓ Present' : '✗ Missing'}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -916,6 +937,114 @@ export default function DashboardPage({ user, onSignOut }) {
           </div>
         </div>
       </main>
+
+      {/* Image Modal Popup */}
+      {imageModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setImageModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setImageModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
+            >
+              ✕
+            </button>
+
+            {/* Image Title */}
+            <h2 style={{ marginTop: 0, marginBottom: '16px', color: '#1f2937', fontSize: '18px' }}>
+              Full Resolution Frame
+            </h2>
+
+            {/* Image */}
+            <img
+              src={modalImageUrl}
+              alt="Full resolution frame"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb'
+              }}
+            />
+
+            {/* Download Button */}
+            <button
+              onClick={() => {
+                const a = document.createElement('a');
+                a.href = modalImageUrl;
+                a.download = `frame-${selectedDetection?.frameId?.substring(0, 8) || 'export'}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }}
+              style={{
+                marginTop: '16px',
+                padding: '10px 16px',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#2563eb'}
+            >
+              ⬇️ Download Image
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
