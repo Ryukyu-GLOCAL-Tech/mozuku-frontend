@@ -851,7 +851,7 @@ export default function DashboardPage({ user, onSignOut }) {
                     <div>
                       <p style={{ margin: '0 0 4px 0', color: '#6b7280' }}>Impurities:</p>
                       <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>
-                        {selectedDetection.detections?.length ?? selectedDetection.detectionCount ?? 0}
+                        {selectedDetection.detectionCount || selectedDetection.detections?.length || 0}
                       </p>
                     </div>
                   </div>
