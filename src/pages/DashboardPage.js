@@ -822,7 +822,7 @@ export default function DashboardPage({ user, onSignOut }) {
                         }
                       }}
                     />
-                    {selectedDetection && (selectedDetection.detections?.length === 0) && (
+                    {selectedDetection && (selectedDetection.detectionCount === 0) && (
                       <p style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', margin: 0 }}>
                         ℹ️ No impurities found
                       </p>
@@ -835,9 +835,9 @@ export default function DashboardPage({ user, onSignOut }) {
                   </div>
                 )}
               </div>
-              {selectedDetection && (selectedDetection.detections?.length || 0) > 0 && (
+              {selectedDetection && (selectedDetection.detectionCount || 0) > 0 && (
                 <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                  ⚠️ {selectedDetection.detections?.length || 0} impurity{(selectedDetection.detections?.length || 0) === 1 ? '' : '(ies)'} detected
+                  ⚠️ {selectedDetection.detectionCount} impurity{selectedDetection.detectionCount === 1 ? '' : '(ies)'} detected
                 </p>
               )}
               {selectedDetection && (
