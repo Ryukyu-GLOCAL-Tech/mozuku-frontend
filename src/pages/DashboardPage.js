@@ -25,10 +25,9 @@ export default function DashboardPage({ user, onSignOut }) {
     loadDetections();
     // Refresh stats every 5 seconds
     const interval = setInterval(loadStats, 5000);
-    const detectionInterval = setInterval(loadDetections, 10000);
+    // Don't auto-refresh detections - let user control frame selection
     return () => {
       clearInterval(interval);
-      clearInterval(detectionInterval);
     };
   }, []);
 
@@ -174,6 +173,7 @@ export default function DashboardPage({ user, onSignOut }) {
         } else {
           // Replace with fresh frames
           setDetections(newFrames);
+          // Only set first detection if no selection exists
           if (newFrames.length > 0 && !selectedDetection) {
             console.log('Setting first detection as selected:', newFrames[0]);
             setSelectedDetection(newFrames[0]);
@@ -790,7 +790,7 @@ export default function DashboardPage({ user, onSignOut }) {
               </h3>
               <div style={{
                 width: '100%',
-                height: '500px',
+                maxHeight: '600px',
                 backgroundColor: '#f3f4f6',
                 borderRadius: '6px',
                 border: '2px dashed #d1d5db',
@@ -849,7 +849,9 @@ export default function DashboardPage({ user, onSignOut }) {
                     </div>
                     <div>
                       <p style={{ margin: '0 0 4px 0', color: '#6b7280' }}>Impurities:</p>
-                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>{selectedDetection.detections?.length || 0}</p>
+                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>
+                        {selectedDetection.detections?.length ?? selectedDetection.detectionCount ?? 0}
+                      </p>
                     </div>
                   </div>
                   <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #bfdbfe' }}>
