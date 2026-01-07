@@ -822,7 +822,7 @@ export default function DashboardPage({ user, onSignOut }) {
                         }
                       }}
                     />
-                    {selectedDetection && (selectedDetection.detectionCount === 0) && (
+                    {selectedDetection && selectedDetection.detectionCount === 0 && (
                       <p style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', margin: 0 }}>
                         ℹ️ No impurities found
                       </p>
