@@ -749,7 +749,7 @@ export default function DashboardPage({ user, onSignOut }) {
                     onMouseOver={(e) => e.target.style.opacity = '0.8'}
                     onMouseOut={(e) => e.target.style.opacity = '1'}
                   >
-                    Frame {idx + 1} ({det.impurities?.length || det.detectionCount || 0} {(det.impurities?.length || det.detectionCount || 0) === 1 ? 'impurity' : 'impurities'})
+                    Frame {idx + 1} ({det.detectionCount || det.detections?.length || 0} {(det.detectionCount || det.detections?.length || 0) === 1 ? 'impurity' : 'impurities'})
                   </button>
                 ))}
               </div>
@@ -781,12 +781,8 @@ export default function DashboardPage({ user, onSignOut }) {
             </div>
           )}
           
-          {/* Two Column Layout */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '24px'
-          }}>
+          {/* Frame Display */}
+          <div>
             {/* Full Frame */}
             <div>
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
@@ -825,9 +821,9 @@ export default function DashboardPage({ user, onSignOut }) {
                         }
                       }}
                     />
-                    {selectedDetection.detections && selectedDetection.detections.length === 0 && (
+                    {selectedDetection && (selectedDetection.detections?.length === 0) && (
                       <p style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', margin: 0 }}>
-                        ℹ️ Frame loaded (No detections)
+                        ℹ️ No impurities found
                       </p>
                     )}
                   </div>
@@ -838,9 +834,9 @@ export default function DashboardPage({ user, onSignOut }) {
                   </div>
                 )}
               </div>
-              {selectedDetection && selectedDetection.detectionCount > 0 && (
+              {selectedDetection && (selectedDetection.detections?.length || 0) > 0 && (
                 <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-                  🎯 {selectedDetection.detectionCount} detection(s) found
+                  ⚠️ {selectedDetection.detections?.length || 0} impurity{(selectedDetection.detections?.length || 0) === 1 ? '' : '(ies)'} detected
                 </p>
               )}
               {selectedDetection && (
@@ -849,90 +845,21 @@ export default function DashboardPage({ user, onSignOut }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
                       <p style={{ margin: '0 0 4px 0', color: '#6b7280' }}>Frame ID:</p>
-                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>{selectedDetection.frameId?.substring(0, 16) || 'N/A'}...</p>
+                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500', wordBreak: 'break-all' }}>{selectedDetection.frameId || 'N/A'}</p>
                     </div>
                     <div>
                       <p style={{ margin: '0 0 4px 0', color: '#6b7280' }}>Impurities:</p>
-                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>{selectedDetection.impurities?.length || selectedDetection.detectionCount || 0}</p>
+                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>{selectedDetection.detections?.length || 0}</p>
                     </div>
                   </div>
                   <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #bfdbfe' }}>
-                    <p style={{ margin: '0 0 2px 0', color: '#6b7280' }}>Image URL:</p>
+                    <p style={{ margin: '0 0 2px 0', color: '#6b7280' }}>Image Status:</p>
                     <p style={{ margin: 0, color: selectedDetection.fullImageUrl ? '#10b981' : '#ef4444', fontWeight: '500' }}>
-                      {selectedDetection.fullImageUrl ? '✓ Present' : '✗ Missing'}
+                      {selectedDetection.fullImageUrl ? '✓ Frame Loaded' : '✗ Frame Not Loaded'}
                     </p>
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Detected Objects */}
-            <div>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Detected Impurities (High Res)
-              </h3>
-              <div style={{
-                width: '100%',
-                height: '500px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '6px',
-                border: '2px dashed #d1d5db',
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'flex-start',
-                color: '#6b7280',
-                fontSize: '14px',
-                overflow: 'auto',
-                padding: '12px'
-              }}>
-                {selectedDetection && selectedDetection.impurities && selectedDetection.impurities.length > 0 ? (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                    gap: '12px',
-                    width: '100%'
-                  }}>
-                    {selectedDetection.impurities.map((impurity, idx) => (
-                      <div key={impurity.impurityId || idx} style={{
-                        borderRadius: '6px',
-                        overflow: 'hidden',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: 'white',
-                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                      }}>
-                        <img
-                          src={impurity.presignedUrl || impurity.imageUrl}
-                          alt={`Impurity ${idx + 1}`}
-                          style={{
-                            width: '100%',
-                            height: '140px',
-                            objectFit: 'cover',
-                            display: 'block'
-                          }}
-                          onError={(e) => {
-                            e.target.style.backgroundColor = '#f3f4f6';
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                        <div style={{ padding: '8px' }}>
-                          <p style={{ fontSize: '11px', fontWeight: '600', color: '#1f2937', margin: '0 0 2px 0' }}>
-                            {impurity.label || 'Impurity'}
-                          </p>
-                          <p style={{ fontSize: '10px', color: '#6b7280', margin: 0 }}>
-                            {(impurity.confidence * 100).toFixed(1)}% confidence
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', width: '100%' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '8px' }}>🔍</div>
-                    <p style={{ margin: 0 }}>Detected objects appear here</p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>(Cropped & Enhanced Resolution)</p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
