@@ -176,6 +176,7 @@ export default function DashboardPage({ user, onSignOut }) {
           // Only set first detection if no selection exists
           if (newFrames.length > 0 && !selectedDetection) {
             console.log('Setting first detection as selected:', newFrames[0]);
+            console.log('FRAME DATA STRUCTURE:', JSON.stringify(newFrames[0], null, 2));
             setSelectedDetection(newFrames[0]);
           }
         }
