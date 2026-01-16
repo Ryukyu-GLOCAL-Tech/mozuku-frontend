@@ -170,7 +170,7 @@ export default function HistoryPage({ user, onSignOut }) {
         <div>
           <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 'bold' }}>{t('history.title')}</h1>
           <p style={{ margin: '5px 0 0 0', color: '#94a3b8' }}>
-            View and analyze your detection sessions
+            {t('history.tryAdjusting')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -208,7 +208,7 @@ export default function HistoryPage({ user, onSignOut }) {
             cursor: 'pointer'
           }}
         >
-          ← Back to Dashboard
+          ← {t('nav.dashboard')}
         </a>
       </div>
 
@@ -221,25 +221,25 @@ export default function HistoryPage({ user, onSignOut }) {
           marginBottom: '30px'
         }}>
           <StatCard 
-            title="Total Sessions" 
+            title={t('dashboard.activeSessions')} 
             value={overallStats.totalSessions}
             subtitle="All time"
             color="#3b82f6"
           />
           <StatCard 
-            title="Total Detections" 
+            title={t('dashboard.totalDetections')} 
             value={overallStats.totalDetections.toLocaleString()}
             subtitle="All time"
             color="#10b981"
           />
           <StatCard 
-            title="Impurities Found" 
+            title={t('dashboard.impuritiesFound')} 
             value={overallStats.totalImpurities.toLocaleString()}
             subtitle="All time"
             color="#f59e0b"
           />
           <StatCard 
-            title="Avg Detection Rate" 
+            title={t('dashboard.detectionRate')} 
             value={`${overallStats.avgDetectionRate}%`}
             subtitle="Across all sessions"
             color="#8b5cf6"
@@ -256,22 +256,22 @@ export default function HistoryPage({ user, onSignOut }) {
           marginBottom: '30px',
           borderLeft: '4px solid #10b981'
         }}>
-          <h3 style={{ margin: '0 0 15px 0', color: '#10b981' }}>Today's Performance</h3>
+          <h3 style={{ margin: '0 0 15px 0', color: '#10b981' }}>{t('dashboard.statsToday')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
             <div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Sessions</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('dashboard.activeSessions')}</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{todayStats.totalSessions}</div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Detections</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('history.detections')}</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{todayStats.totalDetections}</div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Impurities</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('history.impurities')}</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{todayStats.totalImpurities}</div>
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>Avg Rate</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('history.rate')}</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{todayStats.avgDetectionRate}%</div>
             </div>
           </div>
@@ -285,7 +285,7 @@ export default function HistoryPage({ user, onSignOut }) {
         borderRadius: '8px',
         marginBottom: '20px'
       }}>
-        <h3 style={{ margin: '0 0 15px 0' }}>Filters & Search</h3>
+        <h3 style={{ margin: '0 0 15px 0' }}>{t('history.filters')}</h3>
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -293,7 +293,7 @@ export default function HistoryPage({ user, onSignOut }) {
         }}>
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: '#94a3b8' }}>
-              Start Date
+              {t('history.startDate')}
             </label>
             <input
               type="date"
@@ -312,7 +312,7 @@ export default function HistoryPage({ user, onSignOut }) {
           
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: '#94a3b8' }}>
-              End Date
+              {t('history.endDate')}
             </label>
             <input
               type="date"
@@ -331,7 +331,7 @@ export default function HistoryPage({ user, onSignOut }) {
           
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: '#94a3b8' }}>
-              Status
+              {t('history.status')}
             </label>
             <select
               value={statusFilter}
@@ -345,15 +345,15 @@ export default function HistoryPage({ user, onSignOut }) {
                 color: 'white'
               }}
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
+              <option value="">{t('history.allStatuses')}</option>
+              <option value="active">{t('history.active')}</option>
+              <option value="completed">{t('history.completed')}</option>
             </select>
           </div>
           
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: '#94a3b8' }}>
-              Sort By
+              {t('history.sortBy')}
             </label>
             <select
               value={sortBy}
@@ -367,15 +367,15 @@ export default function HistoryPage({ user, onSignOut }) {
                 color: 'white'
               }}
             >
-              <option value="startTime">Date</option>
-              <option value="totalDetections">Total Detections</option>
-              <option value="detectionRate">Detection Rate</option>
+              <option value="startTime">{t('history.startTime')}</option>
+              <option value="totalDetections">{t('history.totalDetections')}</option>
+              <option value="detectionRate">{t('history.detectionRate')}</option>
             </select>
           </div>
           
           <div>
             <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: '#94a3b8' }}>
-              Order
+              {t('history.order')}
             </label>
             <select
               value={sortOrder}
@@ -389,8 +389,8 @@ export default function HistoryPage({ user, onSignOut }) {
                 color: 'white'
               }}
             >
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
+              <option value="desc">{t('history.newest')}</option>
+              <option value="asc">{t('history.oldest')}</option>
             </select>
           </div>
           
@@ -407,7 +407,7 @@ export default function HistoryPage({ user, onSignOut }) {
                 cursor: 'pointer'
               }}
             >
-              Reset Filters
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -446,28 +446,28 @@ export default function HistoryPage({ user, onSignOut }) {
                 <thead>
                   <tr style={{ borderBottom: '2px solid #334155' }}>
                     <th style={{ padding: '12px', textAlign: 'left', color: '#94a3b8', fontWeight: '600' }}>
-                      Date & Time
+                      {t('session.time')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'left', color: '#94a3b8', fontWeight: '600' }}>
-                      Status
+                      {t('history.status')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', color: '#94a3b8', fontWeight: '600' }}>
-                      Duration
+                      {t('history.duration')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', color: '#94a3b8', fontWeight: '600' }}>
-                      Frames
+                      {t('history.frames')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', color: '#94a3b8', fontWeight: '600' }}>
-                      Detections
+                      {t('history.detections')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', color: '#94a3b8', fontWeight: '600' }}>
-                      Impurities
+                      {t('history.impurities')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'right', color: '#94a3b8', fontWeight: '600' }}>
-                      Rate
+                      {t('history.rate')}
                     </th>
                     <th style={{ padding: '12px', textAlign: 'center', color: '#94a3b8', fontWeight: '600' }}>
-                      Actions
+                      {t('common.view')}
                     </th>
                   </tr>
                 </thead>
@@ -527,7 +527,7 @@ export default function HistoryPage({ user, onSignOut }) {
                             fontSize: '12px'
                           }}
                         >
-                          View Details
+                          {t('history.viewDetails')}
                         </button>
                       </td>
                     </tr>
@@ -557,11 +557,11 @@ export default function HistoryPage({ user, onSignOut }) {
                     cursor: pagination.hasPrev ? 'pointer' : 'not-allowed'
                   }}
                 >
-                  Previous
+                  {t('history.previous')}
                 </button>
                 
                 <span style={{ color: '#94a3b8' }}>
-                  Page {pagination.currentPage} of {pagination.totalPages}
+                  {t('history.page')} {pagination.currentPage} {t('history.of')} {pagination.totalPages}
                 </span>
                 
                 <button
@@ -576,7 +576,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     cursor: pagination.hasNext ? 'pointer' : 'not-allowed'
                   }}
                 >
-                  Next
+                  {t('history.next')}
                 </button>
               </div>
             )}
@@ -609,7 +609,7 @@ export default function HistoryPage({ user, onSignOut }) {
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0 }}>Session Details</h2>
+              <h2 style={{ margin: 0 }}>{t('session.details')}</h2>
               <button
                 onClick={() => setShowDetailsModal(false)}
                 style={{
@@ -621,7 +621,7 @@ export default function HistoryPage({ user, onSignOut }) {
                   cursor: 'pointer'
                 }}
               >
-                Close
+                {t('session.close')}
               </button>
             </div>
 
@@ -650,7 +650,7 @@ export default function HistoryPage({ user, onSignOut }) {
               borderTop: '2px solid #334155',
               paddingTop: '20px'
             }}>
-              <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Detection Frames</h3>
+              <h3 style={{ marginTop: 0, marginBottom: '15px' }}>{t('session.detectionFrames')}</h3>
               
               {loadingFrames ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -688,15 +688,15 @@ export default function HistoryPage({ user, onSignOut }) {
                     borderRadius: '4px'
                   }}>
                     <div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Frame</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('session.frame')}</div>
                       <div style={{ fontWeight: 'bold' }}>{currentFrameIndex + 1} / {sessionFrames.length}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Detections</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('history.detections')}</div>
                       <div style={{ fontWeight: 'bold', color: '#10b981' }}>{sessionFrames[currentFrameIndex].detectionCount}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Time</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('session.time')}</div>
                       <div style={{ fontSize: '12px' }}>{sessionFrames[currentFrameIndex].timestampFormatted}</div>
                     </div>
                   </div>
@@ -721,7 +721,7 @@ export default function HistoryPage({ user, onSignOut }) {
                         fontSize: '16px'
                       }}
                     >
-                      ← Previous
+                      ← {t('history.previous')}
                     </button>
 
                     <div style={{ color: '#94a3b8', fontSize: '14px' }}>
@@ -741,7 +741,7 @@ export default function HistoryPage({ user, onSignOut }) {
                         fontSize: '16px'
                       }}
                     >
-                      Next →
+                      {t('history.next')} →
                     </button>
                   </div>
                 </>

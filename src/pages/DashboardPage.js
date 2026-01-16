@@ -449,7 +449,7 @@ export default function DashboardPage({ user, onSignOut }) {
               e.target.style.backgroundColor = '#eff6ff';
             }}
           >
-            📜 View Full History
+            📜 {t('history.viewDetails')}
           </a>
 
           {/* Session Controls */}
@@ -474,7 +474,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   display: 'inline-block',
                   animation: 'pulse 2s ease-in-out infinite'
                 }}></span>
-                Active Session (auto-managed)
+                {t('dashboard.activeSessions')}
               </div>
             ) : (
               <div style={{
@@ -504,15 +504,15 @@ export default function DashboardPage({ user, onSignOut }) {
             fontWeight: 'bold',
             color: '#1f2937',
             margin: '0 0 16px 0'
-          }}>📊 All-Time Statistics</h3>
+          }}>📊 {t('dashboard.statsOverall')}</h3>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: '16px'
           }}>
-            <StatItem label="Total Detections" value={stats.totalDetections} />
-            <StatItem label="Impurities Found" value={stats.impuritiesFound} />
-            <StatItem label="Detection Rate" value={stats.detectionRate} />
+            <StatItem label={t('dashboard.totalDetections')} value={stats.totalDetections} />
+            <StatItem label={t('dashboard.impuritiesFound')} value={stats.impuritiesFound} />
+            <StatItem label={t('dashboard.detectionRate')} value={stats.detectionRate} />
           </div>
         </div>
 
@@ -531,15 +531,15 @@ export default function DashboardPage({ user, onSignOut }) {
               fontWeight: 'bold',
               color: '#10b981',
               margin: '0 0 16px 0'
-            }}>🌟 Today's Performance</h3>
+            }}>🌟 {t('dashboard.statsToday')}</h3>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '16px'
             }}>
-              <StatItem label="Detections" value={todayStats.totalDetections} />
-              <StatItem label="Impurities" value={todayStats.impuritiesFound} />
-              <StatItem label="Rate" value={todayStats.detectionRate} />
+              <StatItem label={t('history.detections')} value={todayStats.totalDetections} />
+              <StatItem label={t('history.impurities')} value={todayStats.impuritiesFound} />
+              <StatItem label={t('history.rate')} value={todayStats.detectionRate} />
             </div>
           </div>
         )}
@@ -646,13 +646,13 @@ export default function DashboardPage({ user, onSignOut }) {
             color: '#1f2937',
             marginBottom: '16px',
             marginTop: 0
-          }}>Welcome to Mozuku AI</h2>
+          }}>{t('dashboard.welcome')}</h2>
           <p style={{
             color: '#6b7280',
             lineHeight: '1.6',
             margin: '0 0 16px 0'
           }}>
-            Your impurity detection system is running. Connect your ROS2 camera system to start monitoring for impurities in real-time.
+            {t('dashboard.description')}
           </p>
         </div>
 
@@ -670,7 +670,7 @@ export default function DashboardPage({ user, onSignOut }) {
             color: '#1f2937',
             marginBottom: '24px',
             marginTop: 0
-          }}>🤖 ROS2 Launch Control</h2>
+          }}>🤖 {t('dashboard.ros2Control')}</h2>
 
           {/* Model URL Configuration */}
           <div style={{
