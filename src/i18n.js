@@ -49,6 +49,11 @@ const resources = {
       "dashboard.waitingForFrame": "Waiting for frame data...",
       "dashboard.startAll": "Start All",
       "dashboard.stopAll": "Stop All",
+      "dashboard.modelUrl": "YOLOv8 Model URL (S3 or HTTPS)",
+      "dashboard.modelUrlPlaceholder": "e.g., s3://my-bucket/models/best.pt or https://example.com/best.pt",
+      "dashboard.modelUrlHint": "Leave empty to use default model (best.pt from package resources)",
+      "dashboard.welcomeUser": "Welcome",
+      "dashboard.to": "to",
       
       // History Page
       "history.title": "Detection History",
@@ -101,11 +106,28 @@ const resources = {
       "session.duration": "Duration",
       
       // Login Page
-      "login.title": "Login",
-      "login.email": "Email",
+      "login.title": "Mozuku AI",
+      "login.subtitle": "Impurity Detection System",
+      "login.username": "Username",
       "login.password": "Password",
-      "login.submit": "Login",
-      "login.loggingIn": "Logging in...",
+      "login.enterUsername": "Enter your username",
+      "login.enterPassword": "Enter your password",
+      "login.signIn": "Sign In",
+      "login.signingIn": "Signing In...",
+      "login.forgotPassword": "Forgot your password?",
+      "login.needHelp": "Need help?",
+      "login.contactAdmin": "Contact Admin",
+      "login.newPassword": "New Password",
+      "login.confirmPassword": "Confirm Password",
+      "login.minChars": "Min 8 characters",
+      "login.confirmPasswordPlaceholder": "Confirm password",
+      "login.setNewPassword": "Set New Password",
+      "login.settingPassword": "Setting Password...",
+      "login.pleaseSetNewPassword": "Please set a new password to continue",
+      "login.signInFailed": "Sign in failed",
+      "login.passwordsDoNotMatch": "Passwords do not match",
+      "login.passwordMinLength": "Password must be at least 8 characters",
+      "login.failedToChangePassword": "Failed to change password",
       
       // Common
       "common.loading": "Loading...",
@@ -115,7 +137,12 @@ const resources = {
       "common.save": "Save",
       "common.delete": "Delete",
       "common.edit": "Edit",
-      "common.view": "View"
+      "common.view": "View",
+      "common.authenticated": "Authenticated",
+      "common.notAuthenticated": "Not authenticated. Please login first.",
+      "common.errorPrefix": "Error",
+      "common.unknownError": "Unknown error",
+      "common.failedToSendCommand": "Failed to send command"
     }
   },
   ja: {
@@ -164,6 +191,11 @@ const resources = {
       "dashboard.waitingForFrame": "フレームデータを待っています...",
       "dashboard.startAll": "すべて開始",
       "dashboard.stopAll": "すべて停止",
+      "dashboard.modelUrl": "YOLOv8モデルURL（S3またはHTTPS）",
+      "dashboard.modelUrlPlaceholder": "例: s3://my-bucket/models/best.pt または https://example.com/best.pt",
+      "dashboard.modelUrlHint": "空白のままにするとデフォルトモデルを使用します（パッケージリソースのbest.pt）",
+      "dashboard.welcomeUser": "ようこそ",
+      "dashboard.to": "〜",
       
       // History Page
       "history.title": "検出履歴",
@@ -216,11 +248,28 @@ const resources = {
       "session.duration": "期間",
       
       // Login Page
-      "login.title": "ログイン",
-      "login.email": "メール",
+      "login.title": "もずく AI",
+      "login.subtitle": "異物検出システム",
+      "login.username": "ユーザー名",
       "login.password": "パスワード",
-      "login.submit": "ログイン",
-      "login.loggingIn": "ログイン中...",
+      "login.enterUsername": "ユーザー名を入力",
+      "login.enterPassword": "パスワードを入力",
+      "login.signIn": "ログイン",
+      "login.signingIn": "ログイン中...",
+      "login.forgotPassword": "パスワードをお忘れですか？",
+      "login.needHelp": "お困りですか？",
+      "login.contactAdmin": "管理者に連絡",
+      "login.newPassword": "新しいパスワード",
+      "login.confirmPassword": "パスワードを確認",
+      "login.minChars": "8文字以上",
+      "login.confirmPasswordPlaceholder": "パスワードを確認",
+      "login.setNewPassword": "新しいパスワードを設定",
+      "login.settingPassword": "設定中...",
+      "login.pleaseSetNewPassword": "続行するには新しいパスワードを設定してください",
+      "login.signInFailed": "ログインに失敗しました",
+      "login.passwordsDoNotMatch": "パスワードが一致しません",
+      "login.passwordMinLength": "パスワードは8文字以上である必要があります",
+      "login.failedToChangePassword": "パスワードの変更に失敗しました",
       
       // Common
       "common.loading": "読み込み中...",
@@ -230,7 +279,12 @@ const resources = {
       "common.save": "保存",
       "common.delete": "削除",
       "common.edit": "編集",
-      "common.view": "表示"
+      "common.view": "表示",
+      "common.authenticated": "認証済み",
+      "common.notAuthenticated": "認証されていません。最初にログインしてください。",
+      "common.errorPrefix": "エラー",
+      "common.unknownError": "不明なエラー",
+      "common.failedToSendCommand": "コマンドの送信に失敗しました"
     }
   }
 };

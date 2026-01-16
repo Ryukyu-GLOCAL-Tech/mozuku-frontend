@@ -136,7 +136,7 @@ export default function DashboardPage({ user, onSignOut }) {
   const sendCommand = async (command) => {
     const authToken = getAuthToken();
     if (!authToken) {
-      alert('Not authenticated. Please login first.');
+      alert(t('common.notAuthenticated'));
       return;
     }
 
@@ -182,11 +182,11 @@ export default function DashboardPage({ user, onSignOut }) {
         }
       } else {
         const error = await response.json();
-        alert(`Error: ${error.message || 'Unknown error'}`);
+        alert(`${t('common.errorPrefix')}: ${error.message || t('common.unknownError')}`);
       }
     } catch (err) {
       console.error('Error:', err);
-      alert('Failed to send command');
+      alert(t('common.failedToSendCommand'));
     } finally {
       setLoading(false);
     }
@@ -384,7 +384,7 @@ export default function DashboardPage({ user, onSignOut }) {
                 color: '#2563eb',
                 fontSize: '12px',
                 margin: '4px 0 0 0'
-              }}>✓ Authenticated</p>
+              }}>✓ {t('common.authenticated')}</p>
             </div>
             <button
               onClick={onSignOut}
@@ -566,7 +566,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   fontSize: '13px',
                   fontWeight: '600',
                   margin: 0
-                }}>Total Detections</p>
+                }}>{t('dashboard.totalDetections')}</p>
                 <p style={{
                   fontSize: '32px',
                   fontWeight: 'bold',
@@ -593,7 +593,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   fontSize: '13px',
                   fontWeight: '600',
                   margin: 0
-                }}>Impurities Found</p>
+                }}>{t('dashboard.impuritiesFound')}</p>
                 <p style={{
                   fontSize: '32px',
                   fontWeight: 'bold',
@@ -620,7 +620,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   fontSize: '13px',
                   fontWeight: '600',
                   margin: 0
-                }}>Detection Rate</p>
+                }}>{t('dashboard.detectionRate')}</p>
                 <p style={{
                   fontSize: '32px',
                   fontWeight: 'bold',
@@ -687,13 +687,13 @@ export default function DashboardPage({ user, onSignOut }) {
               color: '#1f2937',
               marginBottom: '8px'
             }}>
-              📦 YOLOv8 Model URL (S3 or HTTPS)
+              📦 {t('dashboard.modelUrl')}
             </label>
             <input
               type="text"
               value={modelUrl}
               onChange={(e) => setModelUrl(e.target.value)}
-              placeholder="e.g., s3://my-bucket/models/best.pt or https://example.com/best.pt"
+              placeholder={t('dashboard.modelUrlPlaceholder')}
               style={{
                 width: '100%',
                 padding: '10px 12px',
@@ -710,7 +710,7 @@ export default function DashboardPage({ user, onSignOut }) {
               color: '#6b7280',
               margin: 0
             }}>
-              💡 Leave empty to use default model (best.pt from package resources)
+              💡 {t('dashboard.modelUrlHint')}
             </p>
           </div>
 
@@ -754,7 +754,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   opacity: cameraBringupRunning ? 0.5 : 1
                 }}
               >
-                ▶️ Start
+                ▶️ {t('dashboard.start')}
               </button>
               <button
                 onClick={() => sendCommand('stop_camera_bringup')}
@@ -772,7 +772,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   opacity: !cameraBringupRunning ? 0.5 : 1
                 }}
               >
-                ⏹️ Stop
+                ⏹️ {t('dashboard.stop')}
               </button>
             </div>
           </div>
@@ -817,7 +817,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   opacity: sdmBridgeRunning ? 0.5 : 1
                 }}
               >
-                ▶️ Start
+                ▶️ {t('dashboard.start')}
               </button>
               <button
                 onClick={() => sendCommand('stop_sdm_bridge')}
@@ -835,7 +835,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   opacity: !sdmBridgeRunning ? 0.5 : 1
                 }}
               >
-                ⏹️ Stop
+                ⏹️ {t('dashboard.stop')}
               </button>
             </div>
           </div>

@@ -175,7 +175,7 @@ export default function HistoryPage({ user, onSignOut }) {
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <LanguageSwitcher />
-          <span style={{ color: '#94a3b8' }}>Welcome, {user?.username}</span>
+          <span style={{ color: '#94a3b8' }}>{t('dashboard.welcomeUser')}, {user?.username}</span>
           <button
             onClick={handleSignOut}
             style={{
@@ -484,7 +484,7 @@ export default function HistoryPage({ user, onSignOut }) {
                         <div style={{ fontSize: '14px' }}>{session.startTimeFormatted}</div>
                         {session.endTimeFormatted && (
                           <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                            to {session.endTimeFormatted}
+                            {t('dashboard.to')} {session.endTimeFormatted}
                           </div>
                         )}
                       </td>
@@ -496,7 +496,7 @@ export default function HistoryPage({ user, onSignOut }) {
                           backgroundColor: session.status === 'active' ? '#10b98120' : '#3b82f620',
                           color: session.status === 'active' ? '#10b981' : '#3b82f6'
                         }}>
-                          {session.status}
+                          {session.status === 'active' ? t('history.active') : t('history.completed')}
                         </span>
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { signIn, confirmSignIn } from 'aws-amplify/auth';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginPage({ onUserSignedIn }) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -27,7 +29,7 @@ export default function LoginPage({ onUserSignedIn }) {
       
       onUserSignedIn();
     } catch (err) {
-      setError(err.message || 'Sign in failed');
+      setError(err.message || t('login.signInFailed'));
       setLoading(false);
     }
   };
@@ -37,11 +39,11 @@ export default function LoginPage({ onUserSignedIn }) {
     setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('login.passwordsDoNotMatch'));
       return;
     }
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('login.passwordMinLength'));
       return;
     }
 
@@ -50,7 +52,7 @@ export default function LoginPage({ onUserSignedIn }) {
       await confirmSignIn({ challengeResponse: newPassword });
       onUserSignedIn();
     } catch (err) {
-      setError(err.message || 'Failed to change password');
+      setError(err.message || t('login.failedToChangePassword'));
       setLoading(false);
     }
   };
@@ -83,11 +85,11 @@ export default function LoginPage({ onUserSignedIn }) {
               fontWeight: 'bold',
               color: '#1f2937',
               marginBottom: '8px'
-            }}>Mozuku AI</h1>
+            }}>{t('login.title')}</h1>
             <p style={{
               color: '#6b7280',
               fontSize: '14px'
-            }}>Impurity Detection System</p>
+            }}>{t('login.subtitle')}</p>
           </div>
 
           {/* Error Alert */}
@@ -121,7 +123,7 @@ export default function LoginPage({ onUserSignedIn }) {
                   fontSize: '14px',
                   fontWeight: '600'
                 }}>
-                  Please set a new password to continue
+                  {t('login.pleaseSetNewPassword')}
                 </p>
               </div>
 
@@ -132,10 +134,10 @@ export default function LoginPage({ onUserSignedIn }) {
                   fontWeight: '600',
                   marginBottom: '8px',
                   fontSize: '14px'
-                }}>New Password</label>
+                }}>{t('login.newPassword')}</label>
                 <input
                   type="password"
-                  placeholder="Min 8 characters"
+                  placeholder={t('login.minChars')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   style={{
@@ -159,10 +161,10 @@ export default function LoginPage({ onUserSignedIn }) {
                   fontWeight: '600',
                   marginBottom: '8px',
                   fontSize: '14px'
-                }}>Confirm Password</label>
+                }}>{t('login.confirmPassword')}</label>
                 <input
                   type="password"
-                  placeholder="Confirm password"
+                  placeholder={t('login.confirmPasswordPlaceholder')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   style={{
@@ -196,7 +198,7 @@ export default function LoginPage({ onUserSignedIn }) {
                   opacity: loading ? 0.6 : 1
                 }}
               >
-                {loading ? 'Setting Password...' : 'Set New Password'}
+                {loading ? t('login.settingPassword') : t('login.setNewPassword')}
               </button>
             </form>
           ) : (
@@ -208,10 +210,10 @@ export default function LoginPage({ onUserSignedIn }) {
                   fontWeight: '600',
                   marginBottom: '8px',
                   fontSize: '14px'
-                }}>Username</label>
+                }}>{t('login.username')}</label>
                 <input
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder={t('login.enterUsername')}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   style={{
@@ -235,10 +237,10 @@ export default function LoginPage({ onUserSignedIn }) {
                   fontWeight: '600',
                   marginBottom: '8px',
                   fontSize: '14px'
-                }}>Password</label>
+                }}>{t('login.password')}</label>
                 <input
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder={t('login.enterPassword')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
@@ -272,7 +274,7 @@ export default function LoginPage({ onUserSignedIn }) {
                   opacity: loading ? 0.6 : 1
                 }}
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? t('login.signingIn') : t('login.signIn')}
               </button>
 
               <div style={{
@@ -294,7 +296,7 @@ export default function LoginPage({ onUserSignedIn }) {
                     fontWeight: '600'
                   }}
                 >
-                  Forgot your password?
+                  {t('login.forgotPassword')}
                 </button>
               </div>
             </form>
@@ -308,7 +310,7 @@ export default function LoginPage({ onUserSignedIn }) {
             fontSize: '13px',
             color: '#6b7280'
           }}>
-            <p>Need help? 
+            <p>{t('login.needHelp')} 
               <button 
                 type="button"
                 onClick={() => {}}
@@ -321,7 +323,7 @@ export default function LoginPage({ onUserSignedIn }) {
                   fontWeight: '600'
                 }}
               >
-                Contact Admin
+                {t('login.contactAdmin')}
               </button>
             </p>
           </div>
