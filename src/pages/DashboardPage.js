@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function DashboardPage({ user, onSignOut }) {
+  const { t } = useTranslation();
   const [stats, setStats] = useState({
     totalDetections: 0,
     impuritiesFound: 0,
@@ -356,12 +358,12 @@ export default function DashboardPage({ user, onSignOut }) {
                 fontWeight: 'bold',
                 color: '#1f2937',
                 margin: '0 0 4px 0'
-              }}>Mozuku</h1>
+              }}>{t('dashboard.title')}</h1>
               <p style={{
                 fontSize: '12px',
                 color: '#6b7280',
                 margin: 0
-              }}>Impurity Detection System</p>
+              }}>{t('dashboard.statsOverall')}</p>
             </div>
           </div>
 
@@ -400,7 +402,7 @@ export default function DashboardPage({ user, onSignOut }) {
               onMouseOver={(e) => e.target.style.backgroundColor = '#b91c1c'}
               onMouseOut={(e) => e.target.style.backgroundColor = '#dc2626'}
             >
-              Sign Out
+              {t('nav.logout')}
             </button>
           </div>
         </div>

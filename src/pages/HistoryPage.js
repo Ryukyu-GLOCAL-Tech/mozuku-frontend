@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function HistoryPage({ user, onSignOut }) {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [overallStats, setOverallStats] = useState(null);
@@ -166,7 +168,7 @@ export default function HistoryPage({ user, onSignOut }) {
         borderRadius: '8px'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 'bold' }}>Detection History</h1>
+          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 'bold' }}>{t('history.title')}</h1>
           <p style={{ margin: '5px 0 0 0', color: '#94a3b8' }}>
             View and analyze your detection sessions
           </p>
@@ -185,7 +187,7 @@ export default function HistoryPage({ user, onSignOut }) {
               cursor: 'pointer'
             }}
           >
-            Sign Out
+            {t('nav.logout')}
           </button>
         </div>
       </div>

@@ -211,8 +211,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: localStorage.getItem('language') || 'en', // Default language from localStorage or 'en'
-    fallbackLng: 'en',
+    lng: localStorage.getItem('language') || 'ja', // Default language from localStorage or 'ja' (Japanese)
+    fallbackLng: 'ja',
     interpolation: {
       escapeValue: false // React already escapes values
     }
