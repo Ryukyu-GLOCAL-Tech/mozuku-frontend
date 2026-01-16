@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function HistoryPage({ user, onSignOut }) {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [overallStats, setOverallStats] = useState(null);
@@ -171,6 +174,7 @@ export default function HistoryPage({ user, onSignOut }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <LanguageSwitcher />
           <span style={{ color: '#94a3b8' }}>Welcome, {user?.username}</span>
           <button
             onClick={handleSignOut}

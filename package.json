@@ -10,8 +10,10 @@
     "@testing-library/user-event": "^13.5.0",
     "aws-amplify": "^6.15.9",
     "axios": "^1.13.2",
+    "i18next": "^25.7.4",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-i18next": "^16.5.3",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },

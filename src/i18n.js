@@ -1,0 +1,221 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+// Translation resources
+const resources = {
+  en: {
+    translation: {
+      // Navigation
+      "nav.dashboard": "Dashboard",
+      "nav.history": "History",
+      "nav.logout": "Logout",
+      
+      // Dashboard Page
+      "dashboard.title": "Mozuku Impurity Detection System",
+      "dashboard.welcome": "Welcome to Mozuku Detection",
+      "dashboard.description": "Your impurity detection system is running. Connect your ROS2 camera system to start monitoring for impurities in real-time.",
+      "dashboard.statsToday": "Today's Statistics",
+      "dashboard.statsOverall": "Overall Statistics",
+      "dashboard.totalDetections": "Total Detections",
+      "dashboard.impuritiesFound": "Impurities Found",
+      "dashboard.detectionRate": "Detection Rate",
+      "dashboard.activeSessions": "Active Sessions",
+      "dashboard.ros2Control": "ROS2 Launch Files Control",
+      "dashboard.launchFiles": "Launch Files",
+      "dashboard.cameraBringup": "Camera Bringup",
+      "dashboard.nozzleControl": "Nozzle Control (SDM Bridge)",
+      "dashboard.status": "Status",
+      "dashboard.start": "Start",
+      "dashboard.stop": "Stop",
+      "dashboard.starting": "Starting...",
+      "dashboard.stopping": "Stopping...",
+      "dashboard.running": "Running",
+      "dashboard.stopped": "Stopped",
+      "dashboard.failed": "Failed",
+      "dashboard.dynamicModel": "Dynamic Model Management",
+      "dashboard.selectModel": "Select YOLOv8 Model",
+      "dashboard.default": "Default",
+      "dashboard.applyModel": "Apply Model",
+      "dashboard.applying": "Applying...",
+      "dashboard.uploadModel": "Upload Custom Model",
+      "dashboard.chooseFile": "Choose File",
+      "dashboard.upload": "Upload",
+      "dashboard.uploading": "Uploading...",
+      "dashboard.modelInfo": "Model Format: .pt file (PyTorch)",
+      
+      // History Page
+      "history.title": "Detection History",
+      "history.search": "Search...",
+      "history.filters": "Filters",
+      "history.startDate": "Start Date",
+      "history.endDate": "End Date",
+      "history.status": "Status",
+      "history.allStatuses": "All Statuses",
+      "history.completed": "Completed",
+      "history.active": "Active",
+      "history.sortBy": "Sort By",
+      "history.startTime": "Start Time",
+      "history.totalDetections": "Total Detections",
+      "history.detectionRate": "Detection Rate",
+      "history.order": "Order",
+      "history.newest": "Newest First",
+      "history.oldest": "Oldest First",
+      "history.sessionId": "Session ID",
+      "history.started": "Started",
+      "history.duration": "Duration",
+      "history.frames": "Frames",
+      "history.detections": "Detections",
+      "history.impurities": "Impurities",
+      "history.rate": "Rate",
+      "history.viewDetails": "View Details",
+      "history.noSessions": "No sessions found",
+      "history.tryAdjusting": "Try adjusting your filters or date range",
+      "history.page": "Page",
+      "history.of": "of",
+      "history.previous": "Previous",
+      "history.next": "Next",
+      
+      // Session Details Modal
+      "session.details": "Session Details",
+      "session.overview": "Session Overview",
+      "session.sessionInfo": "Session Information",
+      "session.detectionFrames": "Detection Frames",
+      "session.frame": "Frame",
+      "session.time": "Time",
+      "session.close": "Close",
+      "session.loading": "Loading frames...",
+      "session.noFrames": "No frames available",
+      
+      // Login Page
+      "login.title": "Login",
+      "login.email": "Email",
+      "login.password": "Password",
+      "login.submit": "Login",
+      "login.loggingIn": "Logging in...",
+      
+      // Common
+      "common.loading": "Loading...",
+      "common.error": "Error",
+      "common.success": "Success",
+      "common.cancel": "Cancel",
+      "common.save": "Save",
+      "common.delete": "Delete",
+      "common.edit": "Edit",
+      "common.view": "View"
+    }
+  },
+  ja: {
+    translation: {
+      // Navigation
+      "nav.dashboard": "ダッシュボード",
+      "nav.history": "履歴",
+      "nav.logout": "ログアウト",
+      
+      // Dashboard Page
+      "dashboard.title": "もずく異物検出システム",
+      "dashboard.welcome": "もずく検出へようこそ",
+      "dashboard.description": "異物検出システムが起動しています。ROS2カメラシステムを接続して、リアルタイムで異物の監視を開始してください。",
+      "dashboard.statsToday": "本日の統計",
+      "dashboard.statsOverall": "全体統計",
+      "dashboard.totalDetections": "総検出数",
+      "dashboard.impuritiesFound": "発見された異物",
+      "dashboard.detectionRate": "検出率",
+      "dashboard.activeSessions": "アクティブセッション",
+      "dashboard.ros2Control": "ROS2起動ファイル制御",
+      "dashboard.launchFiles": "起動ファイル",
+      "dashboard.cameraBringup": "カメラ起動",
+      "dashboard.nozzleControl": "ノズル制御（SDMブリッジ）",
+      "dashboard.status": "ステータス",
+      "dashboard.start": "開始",
+      "dashboard.stop": "停止",
+      "dashboard.starting": "開始中...",
+      "dashboard.stopping": "停止中...",
+      "dashboard.running": "実行中",
+      "dashboard.stopped": "停止",
+      "dashboard.failed": "失敗",
+      "dashboard.dynamicModel": "動的モデル管理",
+      "dashboard.selectModel": "YOLOv8モデルを選択",
+      "dashboard.default": "デフォルト",
+      "dashboard.applyModel": "モデルを適用",
+      "dashboard.applying": "適用中...",
+      "dashboard.uploadModel": "カスタムモデルをアップロード",
+      "dashboard.chooseFile": "ファイルを選択",
+      "dashboard.upload": "アップロード",
+      "dashboard.uploading": "アップロード中...",
+      "dashboard.modelInfo": "モデル形式: .ptファイル（PyTorch）",
+      
+      // History Page
+      "history.title": "検出履歴",
+      "history.search": "検索...",
+      "history.filters": "フィルター",
+      "history.startDate": "開始日",
+      "history.endDate": "終了日",
+      "history.status": "ステータス",
+      "history.allStatuses": "全てのステータス",
+      "history.completed": "完了",
+      "history.active": "アクティブ",
+      "history.sortBy": "並び替え",
+      "history.startTime": "開始時刻",
+      "history.totalDetections": "総検出数",
+      "history.detectionRate": "検出率",
+      "history.order": "順序",
+      "history.newest": "新しい順",
+      "history.oldest": "古い順",
+      "history.sessionId": "セッションID",
+      "history.started": "開始",
+      "history.duration": "期間",
+      "history.frames": "フレーム",
+      "history.detections": "検出",
+      "history.impurities": "異物",
+      "history.rate": "率",
+      "history.viewDetails": "詳細を表示",
+      "history.noSessions": "セッションが見つかりません",
+      "history.tryAdjusting": "フィルターまたは日付範囲を調整してください",
+      "history.page": "ページ",
+      "history.of": "/",
+      "history.previous": "前へ",
+      "history.next": "次へ",
+      
+      // Session Details Modal
+      "session.details": "セッション詳細",
+      "session.overview": "セッション概要",
+      "session.sessionInfo": "セッション情報",
+      "session.detectionFrames": "検出フレーム",
+      "session.frame": "フレーム",
+      "session.time": "時刻",
+      "session.close": "閉じる",
+      "session.loading": "フレーム読み込み中...",
+      "session.noFrames": "利用可能なフレームがありません",
+      
+      // Login Page
+      "login.title": "ログイン",
+      "login.email": "メール",
+      "login.password": "パスワード",
+      "login.submit": "ログイン",
+      "login.loggingIn": "ログイン中...",
+      
+      // Common
+      "common.loading": "読み込み中...",
+      "common.error": "エラー",
+      "common.success": "成功",
+      "common.cancel": "キャンセル",
+      "common.save": "保存",
+      "common.delete": "削除",
+      "common.edit": "編集",
+      "common.view": "表示"
+    }
+  }
+};
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: localStorage.getItem('language') || 'en', // Default language from localStorage or 'en'
+    fallbackLng: 'en',
+    interpolation: {
+      escapeValue: false // React already escapes values
+    }
+  });
+
+export default i18n;

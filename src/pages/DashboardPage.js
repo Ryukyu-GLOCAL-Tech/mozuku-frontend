@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function DashboardPage({ user, onSignOut }) {
+  const { t } = useTranslation();
   const [stats, setStats] = useState({
     totalDetections: 0,
     impuritiesFound: 0,
@@ -365,6 +368,7 @@ export default function DashboardPage({ user, onSignOut }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <LanguageSwitcher />
             <div style={{
               backgroundColor: '#eff6ff',
               padding: '12px 16px',
@@ -650,22 +654,6 @@ export default function DashboardPage({ user, onSignOut }) {
           }}>
             Your impurity detection system is running. Connect your ROS2 camera system to start monitoring for impurities in real-time.
           </p>
-          <div style={{
-            backgroundColor: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '6px',
-            padding: '16px',
-            marginTop: '16px'
-          }}>
-            <p style={{
-              color: '#1e40af',
-              fontSize: '13px',
-              fontWeight: '600',
-              margin: 0
-            }}>
-              📌 Waiting for detection data from ROS2 system...
-            </p>
-          </div>
         </div>
 
         {/* ROS2 Launch Files Control */}
