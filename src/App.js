@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Amplify } from 'aws-amplify';
 import { signOut, getCurrentUser } from 'aws-amplify/auth';
-import { useTranslation } from 'react-i18next';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
-import LanguageSwitcher from './components/LanguageSwitcher';
 import './index.css';
 
 // Configure Amplify

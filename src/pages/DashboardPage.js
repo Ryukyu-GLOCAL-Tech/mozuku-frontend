@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function DashboardPage({ user, onSignOut }) {
-  const { t } = useTranslation();
   const [stats, setStats] = useState({
     totalDetections: 0,
     impuritiesFound: 0,
