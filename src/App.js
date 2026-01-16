@@ -64,15 +64,6 @@ function App() {
     }
   };
 
-  const navigateTo = (page) => {
-    setCurrentPage(page);
-    if (page === 'history') {
-      window.history.pushState({}, '', '/history');
-    } else {
-      window.history.pushState({}, '', '/');
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">

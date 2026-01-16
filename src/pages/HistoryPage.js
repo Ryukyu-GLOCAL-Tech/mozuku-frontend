@@ -27,6 +27,7 @@ export default function HistoryPage({ user, onSignOut }) {
 
   useEffect(() => {
     loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, startDate, endDate, statusFilter, sortBy, sortOrder]);
 
   const getAuthToken = () => {

@@ -18,7 +18,6 @@ export default function DashboardPage({ user, onSignOut }) {
   const [modelUrl, setModelUrl] = useState('');  // State for S3 model URL
   const [detections, setDetections] = useState([]);
   const [selectedDetection, setSelectedDetection] = useState(null);
-  const [loadingDetections, setLoadingDetections] = useState(false);
   const [hasMoreFrames, setHasMoreFrames] = useState(true);
   const [totalFrames, setTotalFrames] = useState(0);
   const [imageModalOpen, setImageModalOpen] = useState(false);
@@ -39,6 +38,7 @@ export default function DashboardPage({ user, onSignOut }) {
     return () => {
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -128,15 +128,7 @@ export default function DashboardPage({ user, onSignOut }) {
     }
   };
 
-  const startSession = async () => {
-    // Session will be auto-started when camera starts
-    alert('Session will start automatically when you start the camera');
-  };
 
-  const stopSession = async () => {
-    // Session will be auto-stopped when camera stops
-    alert('Session will stop automatically when you stop the camera');
-  };
 
   const sendCommand = async (command) => {
     const authToken = getAuthToken();
