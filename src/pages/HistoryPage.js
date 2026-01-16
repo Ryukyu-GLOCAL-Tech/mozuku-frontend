@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import BboxAnnotator from '../components/BboxAnnotator';
 
 export default function HistoryPage({ user, onSignOut }) {
   const { t } = useTranslation();
@@ -30,6 +31,10 @@ export default function HistoryPage({ user, onSignOut }) {
   const [sessionFrames, setSessionFrames] = useState([]);
   const [loadingFrames, setLoadingFrames] = useState(false);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+  
+  // Labeling state
+  const [isEditingLabels, setIsEditingLabels] = useState(false);
+  const [savingLabels, setSavingLabels] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -147,6 +152,60 @@ export default function HistoryPage({ user, onSignOut }) {
     if (currentFrameIndex > 0) {
       setCurrentFrameIndex(currentFrameIndex - 1);
     }
+  };
+  
+  const handleSaveLabels = async (corrections) => {
+    setSavingLabels(true);
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) return;
+
+      const currentFrame = sessionFrames[currentFrameIndex];
+      
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/impurities`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            frameId: currentFrame.frameId,
+            userId: user.userId,
+            corrections: corrections
+          })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update the frame in sessionFrames with new labeling status
+        const updatedFrames = [...sessionFrames];
+        updatedFrames[currentFrameIndex] = {
+          ...updatedFrames[currentFrameIndex],
+          labelingStatus: 'verified',
+          labelingMetrics: data.labelingMetrics
+        };
+        setSessionFrames(updatedFrames);
+        
+        setIsEditingLabels(false);
+        alert(t('labeling.saveSuccess'));
+      } else {
+        const error = await response.json();
+        alert(t('labeling.saveError') + ': ' + error.error);
+      }
+    } catch (err) {
+      console.error('Error saving labels:', err);
+      alert(t('labeling.saveError'));
+    } finally {
+      setSavingLabels(false);
+    }
+  };
+  
+  const handleCancelEdit = () => {
+    setIsEditingLabels(false);
   };
 
   const handleSignOut = async () => {
@@ -650,7 +709,25 @@ export default function HistoryPage({ user, onSignOut }) {
               borderTop: '2px solid #334155',
               paddingTop: '20px'
             }}>
-              <h3 style={{ marginTop: 0, marginBottom: '15px' }}>{t('session.detectionFrames')}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ margin: 0 }}>{t('session.detectionFrames')}</h3>
+                {sessionFrames.length > 0 && !isEditingLabels && (
+                  <button
+                    onClick={() => setIsEditingLabels(true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ✏️ {t('labeling.editLabels')}
+                  </button>
+                )}
+              </div>
               
               {loadingFrames ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -658,29 +735,42 @@ export default function HistoryPage({ user, onSignOut }) {
                 </div>
               ) : sessionFrames.length > 0 ? (
                 <>
-                  {/* Frame Image */}
-                  <div style={{
-                    backgroundColor: '#0f172a',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    marginBottom: '15px',
-                    textAlign: 'center'
-                  }}>
-                    <img 
-                      src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
-                      alt={`Frame ${currentFrameIndex + 1}`}
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '400px',
-                        borderRadius: '4px'
-                      }}
+                  {/* BboxAnnotator for editing mode */}
+                  {isEditingLabels ? (
+                    <BboxAnnotator 
+                      imageUrl={sessionFrames[currentFrameIndex].s3UrlWithoutBbox}
+                      detections={sessionFrames[currentFrameIndex].detections || []}
+                      onSave={handleSaveLabels}
+                      onCancel={handleCancelEdit}
+                      saving={savingLabels}
                     />
-                  </div>
+                  ) : (
+                    <>
+                      {/* Frame Image */}
+                      <div style={{
+                        backgroundColor: '#0f172a',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        marginBottom: '15px',
+                        textAlign: 'center'
+                      }}>
+                        <img 
+                          src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
+                          alt={`Frame ${currentFrameIndex + 1}`}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '400px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Frame Info */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gridTemplateColumns: '1fr 1fr 1fr 1fr',
                     gap: '10px',
                     marginBottom: '15px',
                     padding: '12px',
@@ -699,51 +789,63 @@ export default function HistoryPage({ user, onSignOut }) {
                       <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('session.time')}</div>
                       <div style={{ fontSize: '12px' }}>{sessionFrames[currentFrameIndex].timestampFormatted}</div>
                     </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t('labeling.status')}</div>
+                      <div style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 'bold',
+                        color: sessionFrames[currentFrameIndex].labelingStatus === 'verified' ? '#10b981' : '#f59e0b'
+                      }}>
+                        {sessionFrames[currentFrameIndex].labelingStatus === 'verified' ? '✓ ' + t('labeling.verified') : t('labeling.autoLabeled')}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Navigation Buttons */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '10px'
-                  }}>
-                    <button
-                      onClick={handlePrevFrame}
-                      disabled={currentFrameIndex === 0}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: currentFrameIndex === 0 ? '#334155' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: currentFrameIndex === 0 ? 'not-allowed' : 'pointer',
-                        fontSize: '16px'
-                      }}
-                    >
-                      ← {t('history.previous')}
-                    </button>
+                  {!isEditingLabels && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <button
+                        onClick={handlePrevFrame}
+                        disabled={currentFrameIndex === 0}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: currentFrameIndex === 0 ? '#334155' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: currentFrameIndex === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '16px'
+                        }}
+                      >
+                        ← {t('history.previous')}
+                      </button>
 
-                    <div style={{ color: '#94a3b8', fontSize: '14px' }}>
-                      {t('session.useArrows')}
+                      <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                        {t('session.useArrows')}
+                      </div>
+
+                      <button
+                        onClick={handleNextFrame}
+                        disabled={currentFrameIndex === sessionFrames.length - 1}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: currentFrameIndex === sessionFrames.length - 1 ? '#334155' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: currentFrameIndex === sessionFrames.length - 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '16px'
+                        }}
+                      >
+                        {t('history.next')} →
+                      </button>
                     </div>
-
-                    <button
-                      onClick={handleNextFrame}
-                      disabled={currentFrameIndex === sessionFrames.length - 1}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: currentFrameIndex === sessionFrames.length - 1 ? '#334155' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: currentFrameIndex === sessionFrames.length - 1 ? 'not-allowed' : 'pointer',
-                        fontSize: '16px'
-                      }}
-                    >
-                      {t('history.next')} →
-                    </button>
-                  </div>
+                  )}
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>

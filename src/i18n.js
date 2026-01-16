@@ -105,6 +105,26 @@ const resources = {
       "session.endTime": "End Time",
       "session.duration": "Duration",
       
+      // Labeling
+      "labeling.editLabels": "Edit Labels",
+      "labeling.saveLabels": "Save Labels",
+      "labeling.saving": "Saving...",
+      "labeling.cancel": "Cancel",
+      "labeling.editMode": "Edit Mode",
+      "labeling.viewMode": "View Mode",
+      "labeling.status": "Label Status",
+      "labeling.verified": "Verified",
+      "labeling.autoLabeled": "Auto-labeled",
+      "labeling.saveSuccess": "Labels saved successfully!",
+      "labeling.saveError": "Failed to save labels",
+      "labeling.instructions": "Click and drag to draw new bounding boxes. Click 'Keep' to verify detections or 'Delete' to mark as false positives.",
+      "labeling.detectionList": "Detection List",
+      "labeling.confidence": "Confidence",
+      "labeling.keep": "Keep",
+      "labeling.delete": "Delete",
+      "labeling.added": "Added",
+      "labeling.original": "Original",
+      
       // Login Page
       "login.title": "Mozuku AI",
       "login.subtitle": "Impurity Detection System",
@@ -246,6 +266,26 @@ const resources = {
       "session.useArrows": "矢印キーでフレームを移動",
       "session.endTime": "終了時刻",
       "session.duration": "期間",
+      
+      // Labeling
+      "labeling.editLabels": "ラベル編集",
+      "labeling.saveLabels": "ラベル保存",
+      "labeling.saving": "保存中...",
+      "labeling.cancel": "キャンセル",
+      "labeling.editMode": "編集モード",
+      "labeling.viewMode": "表示モード",
+      "labeling.status": "ラベル状態",
+      "labeling.verified": "検証済み",
+      "labeling.autoLabeled": "自動ラベル付け",
+      "labeling.saveSuccess": "ラベルが正常に保存されました！",
+      "labeling.saveError": "ラベルの保存に失敗しました",
+      "labeling.instructions": "クリックしてドラッグすると新しいバウンディングボックスを描画できます。「保持」をクリックして検出を確認するか、「削除」をクリックして誤検出としてマークします。",
+      "labeling.detectionList": "検出リスト",
+      "labeling.confidence": "信頼度",
+      "labeling.keep": "保持",
+      "labeling.delete": "削除",
+      "labeling.added": "追加済み",
+      "labeling.original": "元の",
       
       // Login Page
       "login.title": "もずく AI",
