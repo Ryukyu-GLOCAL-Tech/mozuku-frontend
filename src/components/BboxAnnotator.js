@@ -25,6 +25,25 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
     }
   }, [detections]);
 
+  // Load image first
+  useEffect(() => {
+    if (!imageUrl) return;
+    
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      setImageDimensions({ width: img.width, height: img.height });
+      setImageLoaded(true);
+    };
+    
+    img.onerror = () => {
+      console.error('Failed to load image:', imageUrl);
+    };
+    
+    img.src = imageUrl;
+  }, [imageUrl]);
+
   // Draw bboxes on canvas
   useEffect(() => {
     if (!imageLoaded || !canvasRef.current) return;
@@ -37,7 +56,6 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
     img.onload = () => {
       canvas.width = img.width;
       canvas.height = img.height;
-      setImageDimensions({ width: img.width, height: img.height });
       
       // Draw image
       ctx.drawImage(img, 0, 0);
