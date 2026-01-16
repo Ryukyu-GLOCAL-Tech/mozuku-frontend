@@ -952,7 +952,6 @@ export default function DashboardPage({ user, onSignOut }) {
               {hasMoreFrames && (
                 <button
                   onClick={loadMoreFrames}
-                  disabled={loadingDetections}
                   style={{
                     marginTop: '12px',
                     padding: '8px 16px',
@@ -962,14 +961,14 @@ export default function DashboardPage({ user, onSignOut }) {
                     borderRadius: '4px',
                     fontSize: '13px',
                     fontWeight: '600',
-                    cursor: loadingDetections ? 'not-allowed' : 'pointer',
-                    opacity: loadingDetections ? 0.6 : 1,
+                    cursor: 'pointer',
+                    opacity: 1,
                     transition: 'all 0.2s'
                   }}
-                  onMouseOver={(e) => !loadingDetections && (e.target.style.opacity = '0.8')}
-                  onMouseOut={(e) => !loadingDetections && (e.target.style.opacity = '1')}
+                  onMouseOver={(e) => (e.target.style.opacity = '0.8')}
+                  onMouseOut={(e) => (e.target.style.opacity = '1')}
                 >
-                  {loadingDetections ? '⏳ Loading...' : '📥 Load More Frames'}
+                  📥 Load More Frames
                 </button>
               )}
             </div>
