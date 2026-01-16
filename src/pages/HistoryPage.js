@@ -626,21 +626,21 @@ export default function HistoryPage({ user, onSignOut }) {
             </div>
 
             <div style={{ display: 'grid', gap: '15px', marginBottom: '30px' }}>
-              <DetailRow label="Session ID" value={selectedSession.sessionId} />
-              <DetailRow label="Status" value={selectedSession.status} />
-              <DetailRow label="Start Time" value={selectedSession.startTimeFormatted} />
+              <DetailRow label={t('history.sessionId')} value={selectedSession.sessionId} />
+              <DetailRow label={t('history.status')} value={selectedSession.status} />
+              <DetailRow label={t('history.startTime')} value={selectedSession.startTimeFormatted} />
               {selectedSession.endTimeFormatted && (
-                <DetailRow label="End Time" value={selectedSession.endTimeFormatted} />
+                <DetailRow label={t('session.endTime')} value={selectedSession.endTimeFormatted} />
               )}
               {selectedSession.durationFormatted && (
-                <DetailRow label="Duration" value={selectedSession.durationFormatted} />
+                <DetailRow label={t('session.duration')} value={selectedSession.durationFormatted} />
               )}
-              <DetailRow label="Total Frames" value={selectedSession.totalFrames} />
-              <DetailRow label="Total Detections" value={selectedSession.totalDetections} />
-              <DetailRow label="Impurities Found" value={selectedSession.impuritiesFound} />
-              <DetailRow label="Detection Rate" value={`${selectedSession.detectionRate}%`} />
+              <DetailRow label={t('session.totalFrames')} value={selectedSession.totalFrames} />
+              <DetailRow label={t('session.totalDetections')} value={selectedSession.totalDetections} />
+              <DetailRow label={t('session.impuritiesFound')} value={selectedSession.impuritiesFound} />
+              <DetailRow label={t('dashboard.detectionRate')} value={`${selectedSession.detectionRate}%`} />
               <DetailRow 
-                label="Avg Detections/Frame" 
+                label={t('session.avgDetections')} 
                 value={selectedSession.avgDetectionsPerFrame} 
               />
             </div>
@@ -654,7 +654,7 @@ export default function HistoryPage({ user, onSignOut }) {
               
               {loadingFrames ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  Loading frames...
+                  {t('session.loading')}
                 </div>
               ) : sessionFrames.length > 0 ? (
                 <>
@@ -725,7 +725,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     </button>
 
                     <div style={{ color: '#94a3b8', fontSize: '14px' }}>
-                      Use arrows to navigate frames
+                      {t('session.useArrows')}
                     </div>
 
                     <button
@@ -747,7 +747,7 @@ export default function HistoryPage({ user, onSignOut }) {
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  No frames available
+                  {t('session.noFrames')}
                 </div>
               )}
             </div>

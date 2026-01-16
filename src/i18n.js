@@ -42,6 +42,13 @@ const resources = {
       "dashboard.upload": "Upload",
       "dashboard.uploading": "Uploading...",
       "dashboard.modelInfo": "Model Format: .pt file (PyTorch)",
+      "dashboard.noActiveSession": "No Active Session (will auto-start)",
+      "dashboard.activeSession": "Active Session (auto-managed)",
+      "dashboard.detectionResults": "Detection Results",
+      "dashboard.fullFrame": "Full Camera Frame with Detections",
+      "dashboard.waitingForFrame": "Waiting for frame data...",
+      "dashboard.startAll": "Start All",
+      "dashboard.stopAll": "Stop All",
       
       // History Page
       "history.title": "Detection History",
@@ -85,6 +92,13 @@ const resources = {
       "session.close": "Close",
       "session.loading": "Loading frames...",
       "session.noFrames": "No frames available",
+      "session.totalFrames": "Total Frames",
+      "session.totalDetections": "Total Detections",
+      "session.impuritiesFound": "Impurities Found",
+      "session.avgDetections": "Avg Detections/Frame",
+      "session.useArrows": "Use arrows to navigate frames",
+      "session.endTime": "End Time",
+      "session.duration": "Duration",
       
       // Login Page
       "login.title": "Login",
@@ -143,6 +157,13 @@ const resources = {
       "dashboard.upload": "アップロード",
       "dashboard.uploading": "アップロード中...",
       "dashboard.modelInfo": "モデル形式: .ptファイル（PyTorch）",
+      "dashboard.noActiveSession": "アクティブセッションなし（自動開始）",
+      "dashboard.activeSession": "アクティブセッション（自動管理）",
+      "dashboard.detectionResults": "検出結果",
+      "dashboard.fullFrame": "検出付き全カメラフレーム",
+      "dashboard.waitingForFrame": "フレームデータを待っています...",
+      "dashboard.startAll": "すべて開始",
+      "dashboard.stopAll": "すべて停止",
       
       // History Page
       "history.title": "検出履歴",
@@ -186,6 +207,13 @@ const resources = {
       "session.close": "閉じる",
       "session.loading": "フレーム読み込み中...",
       "session.noFrames": "利用可能なフレームがありません",
+      "session.totalFrames": "総フレーム数",
+      "session.totalDetections": "総検出数",
+      "session.impuritiesFound": "発見された異物",
+      "session.avgDetections": "平均検出数/フレーム",
+      "session.useArrows": "矢印キーでフレームを移動",
+      "session.endTime": "終了時刻",
+      "session.duration": "期間",
       
       // Login Page
       "login.title": "ログイン",

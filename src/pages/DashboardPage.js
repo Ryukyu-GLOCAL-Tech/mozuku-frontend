@@ -485,7 +485,7 @@ export default function DashboardPage({ user, onSignOut }) {
                 fontSize: '14px',
                 fontWeight: '600'
               }}>
-                No Active Session (will auto-start)
+                {t('dashboard.noActiveSession')}
               </div>
             )}
           </div>
@@ -724,7 +724,7 @@ export default function DashboardPage({ user, onSignOut }) {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>
-                📷 Camera Bringup
+                📷 {t('dashboard.cameraBringup')}
               </h3>
               <span style={{
                 display: 'inline-block',
@@ -735,7 +735,7 @@ export default function DashboardPage({ user, onSignOut }) {
               }}></span>
             </div>
             <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#6b7280' }}>
-              Status: <strong>{cameraBringupRunning ? '🟢 Running' : '🔴 Stopped'}</strong>
+              {t('dashboard.status')}: <strong>{cameraBringupRunning ? `🟢 ${t('dashboard.running')}` : `🔴 ${t('dashboard.stopped')}`}</strong>
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -787,7 +787,7 @@ export default function DashboardPage({ user, onSignOut }) {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>
-                💨 SDM Bridge (Nozzle Control)
+                💨 {t('dashboard.nozzleControl')}
               </h3>
               <span style={{
                 display: 'inline-block',
@@ -798,7 +798,7 @@ export default function DashboardPage({ user, onSignOut }) {
               }}></span>
             </div>
             <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#6b7280' }}>
-              Status: <strong>{sdmBridgeRunning ? '🟢 Running' : '🔴 Stopped'}</strong>
+              {t('dashboard.status')}: <strong>{sdmBridgeRunning ? `🟢 ${t('dashboard.running')}` : `🔴 ${t('dashboard.stopped')}`}</strong>
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -865,7 +865,7 @@ export default function DashboardPage({ user, onSignOut }) {
               onMouseOver={(e) => !((cameraBringupRunning && sdmBridgeRunning) || loading) && (e.target.style.backgroundColor = '#1d4ed8')}
               onMouseOut={(e) => e.target.style.backgroundColor = ((cameraBringupRunning && sdmBridgeRunning) ? '#d1d5db' : '#2563eb')}
             >
-              ▶️ Start All
+              ▶️ {t('dashboard.startAll')}
             </button>
             <button
               onClick={() => sendCommand('stop_all')}
@@ -885,7 +885,7 @@ export default function DashboardPage({ user, onSignOut }) {
               onMouseOver={(e) => !((!cameraBringupRunning && !sdmBridgeRunning) || loading) && (e.target.style.backgroundColor = '#b91c1c')}
               onMouseOut={(e) => e.target.style.backgroundColor = ((!cameraBringupRunning && !sdmBridgeRunning) ? '#d1d5db' : '#dc2626')}
             >
-              ⏹️ Stop All
+              ⏹️ {t('dashboard.stopAll')}
             </button>
           </div>
         </div>
@@ -904,7 +904,7 @@ export default function DashboardPage({ user, onSignOut }) {
             color: '#1f2937',
             marginBottom: '16px',
             marginTop: 0
-          }}>📷 Detection Results</h2>
+          }}>📷 {t('dashboard.detectionResults')}</h2>
           
           {/* Detection Selector */}
           {detections && detections.length > 0 && (
@@ -967,7 +967,7 @@ export default function DashboardPage({ user, onSignOut }) {
             {/* Full Frame */}
             <div>
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                Full Camera Frame with Detections
+                {t('dashboard.fullFrame')}
               </h3>
               <div style={{
                 width: '100%',
@@ -1011,7 +1011,7 @@ export default function DashboardPage({ user, onSignOut }) {
                 ) : (
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '48px', marginBottom: '8px' }}>📹</div>
-                    <p style={{ margin: 0 }}>Waiting for frame data...</p>
+                    <p style={{ margin: 0 }}>{t('dashboard.waitingForFrame')}</p>
                   </div>
                 )}
               </div>
