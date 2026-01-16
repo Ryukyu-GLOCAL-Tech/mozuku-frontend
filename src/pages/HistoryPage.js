@@ -171,6 +171,7 @@ export default function HistoryPage({ user, onSignOut }) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            action: 'updateLabels',
             frameId: currentFrame.frameId,
             userId: user.userId,
             corrections: corrections
