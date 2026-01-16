@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 
 export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }) {
-  const { t } = useTranslation();
   const canvasRef = useRef(null);
   const [bboxes, setBboxes] = useState([]);
   const [editMode, setEditMode] = useState(false);
