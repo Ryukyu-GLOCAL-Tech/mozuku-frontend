@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { signIn, confirmSignIn } from 'aws-amplify/auth';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function LoginPage({ onUserSignedIn }) {
   const { t } = useTranslation();
@@ -70,6 +71,15 @@ export default function LoginPage({ onUserSignedIn }) {
         width: '100%',
         maxWidth: '420px'
       }}>
+        {/* Language Switcher */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          marginBottom: '16px'
+        }}>
+          <LanguageSwitcher />
+        </div>
+
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
