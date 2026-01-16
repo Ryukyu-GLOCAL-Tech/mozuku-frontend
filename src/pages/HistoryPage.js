@@ -24,6 +24,9 @@ export default function HistoryPage({ user, onSignOut }) {
   // Selected session for details view
   const [selectedSession, setSelectedSession] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [sessionFrames, setSessionFrames] = useState([]);
+  const [loadingFrames, setLoadingFrames] = useState(false);
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
 
   useEffect(() => {
     loadHistory();
@@ -96,9 +99,51 @@ export default function HistoryPage({ user, onSignOut }) {
     setCurrentPage(1);
   };
 
-  const handleViewDetails = (session) => {
+  const handleViewDetails = async (session) => {
     setSelectedSession(session);
     setShowDetailsModal(true);
+    setCurrentFrameIndex(0);
+    await loadSessionFrames(session.sessionId);
+  };
+
+  const loadSessionFrames = async (sessionId) => {
+    setLoadingFrames(true);
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) return;
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/detection-history?userId=${user.userId}&sessionId=${sessionId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSessionFrames(data.frames || []);
+      } else {
+        console.error('Failed to load session frames');
+      }
+    } catch (err) {
+      console.error('Error loading session frames:', err);
+    } finally {
+      setLoadingFrames(false);
+    }
+  };
+
+  const handleNextFrame = () => {
+    if (currentFrameIndex < sessionFrames.length - 1) {
+      setCurrentFrameIndex(currentFrameIndex + 1);
+    }
+  };
+
+  const handlePrevFrame = () => {
+    if (currentFrameIndex > 0) {
+      setCurrentFrameIndex(currentFrameIndex - 1);
+    }
   };
 
   const handleSignOut = async () => {
@@ -554,9 +599,9 @@ export default function HistoryPage({ user, onSignOut }) {
             backgroundColor: '#1e293b',
             borderRadius: '8px',
             padding: '30px',
-            maxWidth: '600px',
+            maxWidth: '900px',
             width: '100%',
-            maxHeight: '80vh',
+            maxHeight: '90vh',
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -576,7 +621,7 @@ export default function HistoryPage({ user, onSignOut }) {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '15px' }}>
+            <div style={{ display: 'grid', gap: '15px', marginBottom: '30px' }}>
               <DetailRow label="Session ID" value={selectedSession.sessionId} />
               <DetailRow label="Status" value={selectedSession.status} />
               <DetailRow label="Start Time" value={selectedSession.startTimeFormatted} />
@@ -594,6 +639,113 @@ export default function HistoryPage({ user, onSignOut }) {
                 label="Avg Detections/Frame" 
                 value={selectedSession.avgDetectionsPerFrame} 
               />
+            </div>
+
+            {/* Frame Viewer */}
+            <div style={{ 
+              borderTop: '2px solid #334155',
+              paddingTop: '20px'
+            }}>
+              <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Detection Frames</h3>
+              
+              {loadingFrames ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  Loading frames...
+                </div>
+              ) : sessionFrames.length > 0 ? (
+                <>
+                  {/* Frame Image */}
+                  <div style={{
+                    backgroundColor: '#0f172a',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    marginBottom: '15px',
+                    textAlign: 'center'
+                  }}>
+                    <img 
+                      src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
+                      alt={`Frame ${currentFrameIndex + 1}`}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '400px',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  </div>
+
+                  {/* Frame Info */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '10px',
+                    marginBottom: '15px',
+                    padding: '12px',
+                    backgroundColor: '#0f172a',
+                    borderRadius: '4px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Frame</div>
+                      <div style={{ fontWeight: 'bold' }}>{currentFrameIndex + 1} / {sessionFrames.length}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Detections</div>
+                      <div style={{ fontWeight: 'bold', color: '#10b981' }}>{sessionFrames[currentFrameIndex].detectionCount}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Time</div>
+                      <div style={{ fontSize: '12px' }}>{sessionFrames[currentFrameIndex].timestampFormatted}</div>
+                    </div>
+                  </div>
+
+                  {/* Navigation Buttons */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <button
+                      onClick={handlePrevFrame}
+                      disabled={currentFrameIndex === 0}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: currentFrameIndex === 0 ? '#334155' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: currentFrameIndex === 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '16px'
+                      }}
+                    >
+                      ← Previous
+                    </button>
+
+                    <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                      Use arrows to navigate frames
+                    </div>
+
+                    <button
+                      onClick={handleNextFrame}
+                      disabled={currentFrameIndex === sessionFrames.length - 1}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: currentFrameIndex === sessionFrames.length - 1 ? '#334155' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: currentFrameIndex === sessionFrames.length - 1 ? 'not-allowed' : 'pointer',
+                        fontSize: '16px'
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  No frames available
+                </div>
+              )}
             </div>
           </div>
         </div>
