@@ -6,6 +6,12 @@ export default function DashboardPage({ user, onSignOut }) {
     impuritiesFound: 0,
     detectionRate: '0%'
   });
+  const [todayStats, setTodayStats] = useState({
+    totalDetections: 0,
+    impuritiesFound: 0,
+    detectionRate: '0%'
+  });
+  const [currentSession, setCurrentSession] = useState(null);
   const [cameraBringupRunning, setCameraBringupRunning] = useState(false);
   const [sdmBridgeRunning, setSdmBridgeRunning] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,9 +28,13 @@ export default function DashboardPage({ user, onSignOut }) {
   useEffect(() => {
     // Load stats when component mounts
     loadStats();
+    loadCurrentSession();
     loadDetections();
     // Refresh stats every 5 seconds
-    const interval = setInterval(loadStats, 5000);
+    const interval = setInterval(() => {
+      loadStats();
+      loadCurrentSession();
+    }, 5000);
     // Don't auto-refresh detections - let user control frame selection
     return () => {
       clearInterval(interval);
@@ -48,7 +58,14 @@ export default function DashboardPage({ user, onSignOut }) {
       const authToken = getAuthToken();
       if (!authToken) return;
 
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/stats`, {
+      // Load overall stats from session history (using existing GetDetectionHistory endpoint)
+      const params = new URLSearchParams({
+        userId: user.userId || user.username,
+        page: 1,
+        limit: 1
+      });
+
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/detection-history?${params}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -56,15 +73,69 @@ export default function DashboardPage({ user, onSignOut }) {
 
       if (response.ok) {
         const data = await response.json();
-        setStats({
-          totalDetections: data.totalDetections || 0,
-          impuritiesFound: data.impuritiesFound || 0,
-          detectionRate: data.detectionRate || '0%'
-        });
+        
+        // Set overall stats
+        if (data.overallStats) {
+          setStats({
+            totalDetections: data.overallStats.totalDetections || 0,
+            impuritiesFound: data.overallStats.totalImpurities || 0,
+            detectionRate: `${data.overallStats.avgDetectionRate || 0}%`
+          });
+        }
+        
+        // Set today's stats
+        if (data.todayStats) {
+          setTodayStats({
+            totalDetections: data.todayStats.totalDetections || 0,
+            impuritiesFound: data.todayStats.totalImpurities || 0,
+            detectionRate: `${data.todayStats.avgDetectionRate || 0}%`
+          });
+        }
       }
     } catch (err) {
       console.error('Error loading stats:', err);
     }
+  };
+
+  const loadCurrentSession = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) return;
+
+      // Get active sessions from detection history
+      const params = new URLSearchParams({
+        userId: user.userId || user.username,
+        status: 'active',
+        limit: 1
+      });
+
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/detection-history?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.sessions && data.sessions.length > 0) {
+          setCurrentSession(data.sessions[0]);
+        } else {
+          setCurrentSession(null);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading current session:', err);
+    }
+  };
+
+  const startSession = async () => {
+    // Session will be auto-started when camera starts
+    alert('Session will start automatically when you start the camera');
+  };
+
+  const stopSession = async () => {
+    // Session will be auto-stopped when camera stops
+    alert('Session will stop automatically when you stop the camera');
   };
 
   const sendCommand = async (command) => {
@@ -347,6 +418,136 @@ export default function DashboardPage({ user, onSignOut }) {
         margin: '0 auto',
         padding: '24px 40px'
       }}>
+        {/* History Link and Session Controls */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '20px'
+        }}>
+          <a 
+            href="/history"
+            onClick={(e) => {
+              e.preventDefault();
+              window.history.pushState({}, '', '/history');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#3b82f6',
+              textDecoration: 'none',
+              fontSize: '16px',
+              fontWeight: '600',
+              padding: '10px 16px',
+              backgroundColor: '#eff6ff',
+              borderRadius: '8px',
+              transition: 'all 0.3s',
+              cursor: 'pointer'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#dbeafe';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#eff6ff';
+            }}
+          >
+            📜 View Full History
+          </a>
+
+          {/* Session Controls */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {currentSession ? (
+              <div style={{
+                padding: '8px 16px',
+                backgroundColor: '#10b98120',
+                color: '#10b981',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span style={{ 
+                  width: '8px', 
+                  height: '8px', 
+                  backgroundColor: '#10b981',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'pulse 2s ease-in-out infinite'
+                }}></span>
+                Active Session (auto-managed)
+              </div>
+            ) : (
+              <div style={{
+                padding: '8px 16px',
+                backgroundColor: '#6b728020',
+                color: '#6b7280',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}>
+                No Active Session (will auto-start)
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Overall Stats Section */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#1f2937',
+            margin: '0 0 16px 0'
+          }}>📊 All-Time Statistics</h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px'
+          }}>
+            <StatItem label="Total Detections" value={stats.totalDetections} />
+            <StatItem label="Impurities Found" value={stats.impuritiesFound} />
+            <StatItem label="Detection Rate" value={stats.detectionRate} />
+          </div>
+        </div>
+
+        {/* Today's Stats Section */}
+        {todayStats.totalDetections > 0 && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            padding: '20px',
+            marginBottom: '24px',
+            borderLeft: '4px solid #10b981'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: '#10b981',
+              margin: '0 0 16px 0'
+            }}>🌟 Today's Performance</h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '16px'
+            }}>
+              <StatItem label="Detections" value={todayStats.totalDetections} />
+              <StatItem label="Impurities" value={todayStats.impuritiesFound} />
+              <StatItem label="Rate" value={todayStats.detectionRate} />
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div style={{
           display: 'grid',
@@ -975,6 +1176,24 @@ export default function DashboardPage({ user, onSignOut }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Helper component for stat items
+function StatItem({ label, value }) {
+  return (
+    <div style={{
+      padding: '12px',
+      backgroundColor: '#f9fafb',
+      borderRadius: '6px'
+    }}>
+      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
+        {value}
+      </div>
     </div>
   );
 }

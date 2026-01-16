@@ -3,6 +3,7 @@ import { Amplify } from 'aws-amplify';
 import { signOut, getCurrentUser } from 'aws-amplify/auth';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import HistoryPage from './pages/HistoryPage';
 import './index.css';
 
 // Configure Amplify
@@ -21,9 +22,25 @@ Amplify.configure(amplifyConfig);
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' or 'history'
 
   useEffect(() => {
     checkUser();
+    
+    // Handle browser navigation
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/history') {
+        setCurrentPage('history');
+      } else {
+        setCurrentPage('dashboard');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    handlePopState(); // Set initial page based on URL
+    
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const checkUser = async () => {
@@ -41,8 +58,18 @@ function App() {
     try {
       await signOut();
       setUser(null);
+      setCurrentPage('dashboard');
     } catch (err) {
       console.error('Sign out failed:', err);
+    }
+  };
+
+  const navigateTo = (page) => {
+    setCurrentPage(page);
+    if (page === 'history') {
+      window.history.pushState({}, '', '/history');
+    } else {
+      window.history.pushState({}, '', '/');
     }
   };
 
@@ -63,6 +90,8 @@ function App() {
     <>
       {!user ? (
         <LoginPage onUserSignedIn={checkUser} />
+      ) : currentPage === 'history' ? (
+        <HistoryPage user={user} onSignOut={handleSignOut} />
       ) : (
         <DashboardPage user={user} onSignOut={handleSignOut} />
       )}
