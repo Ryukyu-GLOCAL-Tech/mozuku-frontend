@@ -186,7 +186,7 @@ export default function HistoryPage({ user, onSignOut }) {
           body: JSON.stringify({
             action: 'updateLabels',
             frameId: currentFrame.frameId,
-            userId: user.userId,
+            userId: 'web-user',
             corrections: corrections
           })
         }
@@ -244,7 +244,7 @@ export default function HistoryPage({ user, onSignOut }) {
       const payload = {
         action: 'markDone',
         frameId: currentFrame.frameId,
-        userId: user.userId,
+        userId: 'web-user',
         detectionCount: currentFrame.detectionCount
       };
       
@@ -327,7 +327,7 @@ export default function HistoryPage({ user, onSignOut }) {
           body: JSON.stringify({
             action: 'submitFeedback',
             frameId: feedbackData.frameId,
-            userId: user.userId,
+            userId: 'web-user',
             feedbackType: feedbackData.type,
             count: feedbackData.count
           })
