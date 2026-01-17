@@ -252,7 +252,12 @@ export default function HistoryPage({ user, onSignOut }) {
         detectionCount: currentFrame.detectionCount
       };
       
-      console.log('Sending markDone payload:', payload);
+      console.log('=== Mark As Done Debug Info ===');
+      console.log('Frame index:', currentFrameIndex);
+      console.log('Frame ID:', currentFrame.frameId);
+      console.log('S3 URL without bbox:', currentFrame.s3UrlWithoutBbox);
+      console.log('Detection count:', currentFrame.detectionCount);
+      console.log('Sending payload:', payload);
       
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/impurities`,
