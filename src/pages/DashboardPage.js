@@ -88,8 +88,8 @@ export default function DashboardPage({ user, onSignOut }) {
         let totalFramesCount = 0;
         let todayVerifiedCount = 0;
         let todayTotalFrames = 0;
+        let todayTotalF1 = 0;
 
-        const now = Date.now();
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
         const startOfDayTime = startOfDay.getTime();
@@ -112,6 +112,7 @@ export default function DashboardPage({ user, onSignOut }) {
                   
                   if (frame.timestamp >= startOfDayTime) {
                     todayVerifiedCount++;
+                    todayTotalF1 += frame.labelingMetrics.f1_score || 0;
                   }
                 }
               });
@@ -120,7 +121,7 @@ export default function DashboardPage({ user, onSignOut }) {
         }
 
         const overallAccuracy = verifiedCount > 0 ? Math.round((totalF1 / verifiedCount) * 100) : 0;
-        const todayAccuracy = todayVerifiedCount > 0 ? Math.round((totalF1 / todayVerifiedCount) * 100) : 0;
+        const todayAccuracy = todayVerifiedCount > 0 ? Math.round((todayTotalF1 / todayVerifiedCount) * 100) : 0;
         
         // Set overall stats
         if (data.overallStats) {
