@@ -87,7 +87,6 @@ export default function DashboardPage({ user, onSignOut }) {
         let verifiedCount = 0;
         let totalFramesCount = 0;
         let todayVerifiedCount = 0;
-        let todayTotalFrames = 0;
         let todayTotalF1 = 0;
 
         const startOfDay = new Date();
@@ -99,11 +98,6 @@ export default function DashboardPage({ user, onSignOut }) {
             if (session.frames) {
               session.frames.forEach(frame => {
                 totalFramesCount++;
-                
-                // Check if this frame is from today
-                if (frame.timestamp >= startOfDayTime) {
-                  todayTotalFrames++;
-                }
 
                 // If verified, add to accuracy calculation
                 if (frame.labelingStatus === 'verified' && frame.labelingMetrics) {
