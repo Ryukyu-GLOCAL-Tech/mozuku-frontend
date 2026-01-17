@@ -7,12 +7,17 @@ export default function DashboardPage({ user, onSignOut }) {
   const [stats, setStats] = useState({
     totalDetections: 0,
     impuritiesFound: 0,
-    detectionRate: '0%'
+    detectionRate: '0%',
+    overallAccuracy: '0%',
+    verifiedFrames: 0,
+    totalFrames: 0
   });
   const [todayStats, setTodayStats] = useState({
     totalDetections: 0,
     impuritiesFound: 0,
-    detectionRate: '0%'
+    detectionRate: '0%',
+    overallAccuracy: '0%',
+    verifiedFrames: 0
   });
   const [currentSession, setCurrentSession] = useState(null);
   const [cameraBringupRunning, setCameraBringupRunning] = useState(false);
@@ -65,7 +70,7 @@ export default function DashboardPage({ user, onSignOut }) {
       const params = new URLSearchParams({
         userId: user.userId || user.username,
         page: 1,
-        limit: 1
+        limit: 100  // Get more to calculate accuracy
       });
 
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/detection-history?${params}`, {
@@ -77,12 +82,55 @@ export default function DashboardPage({ user, onSignOut }) {
       if (response.ok) {
         const data = await response.json();
         
+        // Calculate accuracy from verified frames
+        let totalF1 = 0;
+        let verifiedCount = 0;
+        let totalFramesCount = 0;
+        let todayVerifiedCount = 0;
+        let todayTotalFrames = 0;
+
+        const now = Date.now();
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const startOfDayTime = startOfDay.getTime();
+
+        if (data.sessions && data.sessions.length > 0) {
+          data.sessions.forEach(session => {
+            if (session.frames) {
+              session.frames.forEach(frame => {
+                totalFramesCount++;
+                
+                // Check if this frame is from today
+                if (frame.timestamp >= startOfDayTime) {
+                  todayTotalFrames++;
+                }
+
+                // If verified, add to accuracy calculation
+                if (frame.labelingStatus === 'verified' && frame.labelingMetrics) {
+                  totalF1 += frame.labelingMetrics.f1_score || 0;
+                  verifiedCount++;
+                  
+                  if (frame.timestamp >= startOfDayTime) {
+                    todayVerifiedCount++;
+                  }
+                }
+              });
+            }
+          });
+        }
+
+        const overallAccuracy = verifiedCount > 0 ? Math.round((totalF1 / verifiedCount) * 100) : 0;
+        const todayAccuracy = todayVerifiedCount > 0 ? Math.round((totalF1 / todayVerifiedCount) * 100) : 0;
+        
         // Set overall stats
         if (data.overallStats) {
           setStats({
             totalDetections: data.overallStats.totalDetections || 0,
             impuritiesFound: data.overallStats.totalImpurities || 0,
-            detectionRate: `${data.overallStats.avgDetectionRate || 0}%`
+            detectionRate: `${data.overallStats.avgDetectionRate || 0}%`,
+            overallAccuracy: `${overallAccuracy}%`,
+            verifiedFrames: verifiedCount,
+            totalFrames: totalFramesCount
           });
         }
         
@@ -91,7 +139,9 @@ export default function DashboardPage({ user, onSignOut }) {
           setTodayStats({
             totalDetections: data.todayStats.totalDetections || 0,
             impuritiesFound: data.todayStats.totalImpurities || 0,
-            detectionRate: `${data.todayStats.avgDetectionRate || 0}%`
+            detectionRate: `${data.todayStats.avgDetectionRate || 0}%`,
+            overallAccuracy: `${todayAccuracy}%`,
+            verifiedFrames: todayVerifiedCount
           });
         }
       }
@@ -513,6 +563,8 @@ export default function DashboardPage({ user, onSignOut }) {
             <StatItem label={t('dashboard.totalDetections')} value={stats.totalDetections} />
             <StatItem label={t('dashboard.impuritiesFound')} value={stats.impuritiesFound} />
             <StatItem label={t('dashboard.detectionRate')} value={stats.detectionRate} />
+            <StatItem label="Manual Accuracy" value={stats.overallAccuracy} />
+            <StatItem label="Verified Frames" value={`${stats.verifiedFrames}/${stats.totalFrames}`} />
           </div>
         </div>
 
@@ -540,6 +592,8 @@ export default function DashboardPage({ user, onSignOut }) {
               <StatItem label={t('history.detections')} value={todayStats.totalDetections} />
               <StatItem label={t('history.impurities')} value={todayStats.impuritiesFound} />
               <StatItem label={t('history.rate')} value={todayStats.detectionRate} />
+              <StatItem label="Today Accuracy" value={todayStats.overallAccuracy} />
+              <StatItem label="Verified Today" value={todayStats.verifiedFrames} />
             </div>
           </div>
         )}

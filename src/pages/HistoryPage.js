@@ -35,6 +35,10 @@ export default function HistoryPage({ user, onSignOut }) {
   // Labeling state
   const [isEditingLabels, setIsEditingLabels] = useState(false);
   const [savingLabels, setSavingLabels] = useState(false);
+  
+  // Feedback state
+  const [feedbackData, setFeedbackData] = useState({});
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -158,9 +162,18 @@ export default function HistoryPage({ user, onSignOut }) {
     setSavingLabels(true);
     try {
       const authToken = getAuthToken();
-      if (!authToken) return;
+      if (!authToken) {
+        alert(t('labeling.saveError') + ': No authentication token found. Please login again.');
+        setSavingLabels(false);
+        return;
+      }
 
       const currentFrame = sessionFrames[currentFrameIndex];
+      if (!currentFrame) {
+        alert(t('labeling.saveError') + ': No frame selected');
+        setSavingLabels(false);
+        return;
+      }
       
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/impurities`,
@@ -194,12 +207,19 @@ export default function HistoryPage({ user, onSignOut }) {
         setIsEditingLabels(false);
         alert(t('labeling.saveSuccess'));
       } else {
-        const error = await response.json();
-        alert(t('labeling.saveError') + ': ' + error.error);
+        let errorMessage = 'Unknown error';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || `HTTP ${response.status}`;
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        console.error('API Error:', response.status, errorMessage);
+        alert(t('labeling.saveError') + ': ' + errorMessage);
       }
     } catch (err) {
       console.error('Error saving labels:', err);
-      alert(t('labeling.saveError'));
+      alert(t('labeling.saveError') + ': ' + (err.message || 'Network error'));
     } finally {
       setSavingLabels(false);
     }
@@ -207,6 +227,130 @@ export default function HistoryPage({ user, onSignOut }) {
   
   const handleCancelEdit = () => {
     setIsEditingLabels(false);
+  };
+
+  const handleMarkAsDone = async () => {
+    setSavingLabels(true);
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) {
+        alert(t('labeling.saveError') + ': No authentication token');
+        setSavingLabels(false);
+        return;
+      }
+
+      const currentFrame = sessionFrames[currentFrameIndex];
+      
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/impurities`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'markDone',
+            frameId: currentFrame.frameId,
+            userId: user.userId,
+            detectionCount: currentFrame.detectionCount
+          })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedFrames = [...sessionFrames];
+        updatedFrames[currentFrameIndex] = {
+          ...updatedFrames[currentFrameIndex],
+          labelingStatus: 'verified',
+          feedbackType: 'done',
+          labelingMetrics: data.labelingMetrics
+        };
+        setSessionFrames(updatedFrames);
+        alert(t('labeling.saveSuccess'));
+      } else {
+        const error = await response.json();
+        alert(t('labeling.saveError') + ': ' + error.error);
+      }
+    } catch (err) {
+      console.error('Error marking as done:', err);
+      alert(t('labeling.saveError'));
+    } finally {
+      setSavingLabels(false);
+    }
+  };
+
+  const handleWrongDetection = () => {
+    setFeedbackData({
+      frameId: sessionFrames[currentFrameIndex].frameId,
+      type: 'wrongDetection',
+      count: 0
+    });
+    setShowFeedbackForm(true);
+  };
+
+  const handleMissingObjects = () => {
+    setFeedbackData({
+      frameId: sessionFrames[currentFrameIndex].frameId,
+      type: 'missingObjects',
+      count: 0
+    });
+    setShowFeedbackForm(true);
+  };
+
+  const submitFeedback = async () => {
+    if (feedbackData.count <= 0) {
+      alert('Please enter a valid count');
+      return;
+    }
+
+    setSavingLabels(true);
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) return;
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}/impurities`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'submitFeedback',
+            frameId: feedbackData.frameId,
+            userId: user.userId,
+            feedbackType: feedbackData.type,
+            count: feedbackData.count
+          })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedFrames = [...sessionFrames];
+        updatedFrames[currentFrameIndex] = {
+          ...updatedFrames[currentFrameIndex],
+          labelingStatus: 'verified',
+          feedbackType: feedbackData.type,
+          feedbackCount: feedbackData.count,
+          labelingMetrics: data.labelingMetrics
+        };
+        setSessionFrames(updatedFrames);
+        setShowFeedbackForm(false);
+        alert(t('labeling.saveSuccess'));
+      } else {
+        const error = await response.json();
+        alert(t('labeling.saveError') + ': ' + error.error);
+      }
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+      alert(t('labeling.saveError'));
+    } finally {
+      setSavingLabels(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -804,48 +948,132 @@ export default function HistoryPage({ user, onSignOut }) {
 
                   {/* Navigation Buttons */}
                   {!isEditingLabels && (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '10px'
-                    }}>
-                      <button
-                        onClick={handlePrevFrame}
-                        disabled={currentFrameIndex === 0}
-                        style={{
-                          padding: '10px 20px',
-                          backgroundColor: currentFrameIndex === 0 ? '#334155' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: currentFrameIndex === 0 ? 'not-allowed' : 'pointer',
-                          fontSize: '16px'
-                        }}
-                      >
-                        ← {t('history.previous')}
-                      </button>
+                    <>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginBottom: '20px'
+                      }}>
+                        <button
+                          onClick={handlePrevFrame}
+                          disabled={currentFrameIndex === 0}
+                          style={{
+                            padding: '10px 20px',
+                            backgroundColor: currentFrameIndex === 0 ? '#334155' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: currentFrameIndex === 0 ? 'not-allowed' : 'pointer',
+                            fontSize: '16px'
+                          }}
+                        >
+                          ← {t('history.previous')}
+                        </button>
 
-                      <div style={{ color: '#94a3b8', fontSize: '14px' }}>
-                        {t('session.useArrows')}
+                        <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                          {t('session.useArrows')}
+                        </div>
+
+                        <button
+                          onClick={handleNextFrame}
+                          disabled={currentFrameIndex === sessionFrames.length - 1}
+                          style={{
+                            padding: '10px 20px',
+                            backgroundColor: currentFrameIndex === sessionFrames.length - 1 ? '#334155' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: currentFrameIndex === sessionFrames.length - 1 ? 'not-allowed' : 'pointer',
+                            fontSize: '16px'
+                          }}
+                        >
+                          {t('history.next')} →
+                        </button>
                       </div>
 
-                      <button
-                        onClick={handleNextFrame}
-                        disabled={currentFrameIndex === sessionFrames.length - 1}
-                        style={{
-                          padding: '10px 20px',
-                          backgroundColor: currentFrameIndex === sessionFrames.length - 1 ? '#334155' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
+                      {/* Feedback Buttons */}
+                      {sessionFrames[currentFrameIndex].labelingStatus !== 'verified' && (
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '10px',
+                          padding: '15px',
+                          backgroundColor: '#0f172a',
                           borderRadius: '4px',
-                          cursor: currentFrameIndex === sessionFrames.length - 1 ? 'not-allowed' : 'pointer',
-                          fontSize: '16px'
-                        }}
-                      >
-                        {t('history.next')} →
-                      </button>
-                    </div>
+                          border: '1px solid #334155'
+                        }}>
+                          <button
+                            onClick={handleMarkAsDone}
+                            disabled={savingLabels}
+                            style={{
+                              padding: '12px',
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: savingLabels ? 'not-allowed' : 'pointer',
+                              fontWeight: 'bold',
+                              opacity: savingLabels ? 0.6 : 1
+                            }}
+                          >
+                            ✓ Done
+                          </button>
+
+                          <button
+                            onClick={handleMissingObjects}
+                            disabled={savingLabels}
+                            style={{
+                              padding: '12px',
+                              backgroundColor: '#f59e0b',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: savingLabels ? 'not-allowed' : 'pointer',
+                              fontWeight: 'bold',
+                              opacity: savingLabels ? 0.6 : 1
+                            }}
+                          >
+                            ⚠ Missing Objects
+                          </button>
+
+                          <button
+                            onClick={handleWrongDetection}
+                            disabled={savingLabels}
+                            style={{
+                              padding: '12px',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: savingLabels ? 'not-allowed' : 'pointer',
+                              fontWeight: 'bold',
+                              opacity: savingLabels ? 0.6 : 1
+                            }}
+                          >
+                            ✗ Wrong Detection
+                          </button>
+
+                          <button
+                            onClick={() => setIsEditingLabels(true)}
+                            disabled={savingLabels}
+                            style={{
+                              padding: '12px',
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: savingLabels ? 'not-allowed' : 'pointer',
+                              fontWeight: 'bold',
+                              opacity: savingLabels ? 0.6 : 1
+                            }}
+                          >
+                            ✏ Edit Labels
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               ) : (
@@ -853,6 +1081,93 @@ export default function HistoryPage({ user, onSignOut }) {
                   {t('session.noFrames')}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackForm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1001
+        }}>
+          <div style={{
+            backgroundColor: '#1e293b',
+            borderRadius: '8px',
+            padding: '30px',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
+              {feedbackData.type === 'missingObjects' 
+                ? 'Missing Objects Count' 
+                : 'Wrong Detection Count'}
+            </h3>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#94a3b8' }}>
+                {feedbackData.type === 'missingObjects' 
+                  ? 'How many objects are missing?' 
+                  : 'How many objects were incorrectly detected?'}
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={feedbackData.count}
+                onChange={(e) => setFeedbackData({ ...feedbackData, count: parseInt(e.target.value) || 0 })}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  backgroundColor: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '4px',
+                  color: 'white',
+                  fontSize: '16px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setShowFeedbackForm(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: '#334155',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitFeedback}
+                disabled={feedbackData.count <= 0 || savingLabels}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: feedbackData.count > 0 ? '#10b981' : '#334155',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: feedbackData.count > 0 ? 'pointer' : 'not-allowed',
+                  fontWeight: 'bold'
+                }}
+              >
+                {savingLabels ? 'Saving...' : 'Submit'}
+              </button>
             </div>
           </div>
         </div>
