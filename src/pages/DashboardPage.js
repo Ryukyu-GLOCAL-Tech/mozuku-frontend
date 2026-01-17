@@ -32,6 +32,64 @@ export default function DashboardPage({ user, onSignOut }) {
   const [modalImageUrl, setModalImageUrl] = useState('');
   const canvasRef = useRef(null);
 
+  const buildHttpsUrlFromS3 = (s3Url) => {
+    if (!s3Url || typeof s3Url !== 'string' || !s3Url.startsWith('s3://')) return s3Url;
+    const parts = s3Url.replace('s3://', '').split('/', 2);
+    const bucket = parts[0];
+    const key = parts[1] || '';
+    const region = process.env.REACT_APP_COGNITO_REGION || 'ap-northeast-1';
+    return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  };
+
+  const getFrameImageUrl = (frame) => {
+    if (!frame) return '';
+    const candidates = [
+      frame.fullImageUrlWithBbox,
+      frame.fullImageUrl,
+      frame.fullImageUrlWithoutBbox,
+      frame.s3UrlWithBbox,
+      frame.s3UrlWithoutBbox
+    ].filter(Boolean);
+    const chosen = candidates[0] || '';
+    return buildHttpsUrlFromS3(chosen);
+  };
+
+  const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
+    if (!detection) return null;
+
+    if (Array.isArray(detection.bbox) && detection.bbox.length >= 4) {
+      return detection.bbox;
+    }
+
+    const bboxObj = detection.bbox && typeof detection.bbox === 'object' ? detection.bbox : null;
+    if (bboxObj && Number.isFinite(bboxObj.x) && Number.isFinite(bboxObj.y) && Number.isFinite(bboxObj.width) && Number.isFinite(bboxObj.height)) {
+      const x1 = bboxObj.x;
+      const y1 = bboxObj.y;
+      const x2 = bboxObj.x + bboxObj.width;
+      const y2 = bboxObj.y + bboxObj.height;
+      return [x1, y1, x2, y2];
+    }
+
+    const hasNormalized = Number.isFinite(detection.x) && Number.isFinite(detection.y) && Number.isFinite(detection.w) && Number.isFinite(detection.h);
+    if (hasNormalized && imgWidth > 0 && imgHeight > 0) {
+      const xCenter = detection.x;
+      const yCenter = detection.y;
+      const w = detection.w;
+      const h = detection.h;
+
+      const isNormalized = xCenter <= 1 && yCenter <= 1 && w <= 1 && h <= 1;
+      if (isNormalized) {
+        const x1 = (xCenter - w / 2) * imgWidth;
+        const y1 = (yCenter - h / 2) * imgHeight;
+        const x2 = (xCenter + w / 2) * imgWidth;
+        const y2 = (yCenter + h / 2) * imgHeight;
+        return [x1, y1, x2, y2];
+      }
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     // Load stats when component mounts
     loadStats();
@@ -311,14 +369,15 @@ export default function DashboardPage({ user, onSignOut }) {
 
   // Draw bounding boxes on canvas
   useEffect(() => {
-    if (!selectedDetection || !selectedDetection.fullImageUrl || !canvasRef.current) {
-      console.log('Canvas effect skipped:', { selectedDetection: !!selectedDetection, fullImageUrl: selectedDetection?.fullImageUrl, canvasRef: !!canvasRef.current });
+    const imageUrl = getFrameImageUrl(selectedDetection);
+    if (!selectedDetection || !imageUrl || !canvasRef.current) {
+      console.log('Canvas effect skipped:', { selectedDetection: !!selectedDetection, imageUrl, canvasRef: !!canvasRef.current });
       return;
     }
 
     console.log('Drawing frame with detections:', {
       frameId: selectedDetection.frameId,
-      imageUrl: selectedDetection.fullImageUrl,
+      imageUrl,
       detectionCount: selectedDetection.detectionCount,
       detections: selectedDetection.detections
     });
@@ -342,7 +401,7 @@ export default function DashboardPage({ user, onSignOut }) {
       
       if (detectionsList && detectionsList.length > 0) {
         detectionsList.forEach((detection, idx) => {
-          const bbox = detection.bbox;
+          const bbox = resolveBboxPixels(detection, img.width, img.height);
           console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
           
           if (bbox && bbox.length >= 4) {
@@ -370,14 +429,53 @@ export default function DashboardPage({ user, onSignOut }) {
       }
     };
     
+    let retriedWithoutCors = false;
     img.onerror = (err) => {
       console.error('Failed to load image:', err);
+      if (!retriedWithoutCors) {
+        retriedWithoutCors = true;
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => {
+          console.log('Image loaded without CORS:', { width: fallbackImg.width, height: fallbackImg.height });
+          canvas.width = fallbackImg.width;
+          canvas.height = fallbackImg.height;
+          ctx.drawImage(fallbackImg, 0, 0);
+
+          const detectionsList = selectedDetection.detections || [];
+          if (detectionsList && detectionsList.length > 0) {
+            detectionsList.forEach((detection, idx) => {
+              const bbox = resolveBboxPixels(detection, fallbackImg.width, fallbackImg.height);
+              console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
+              if (bbox && bbox.length >= 4) {
+                const [x1, y1, x2, y2] = bbox;
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                ctx.fillStyle = '#ff0000';
+                ctx.font = 'bold 14px Arial';
+                const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
+                const textMetrics = ctx.measureText(label);
+                ctx.fillRect(x1, y1 - 25, textMetrics.width + 10, 25);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(label, x1 + 5, y1 - 8);
+              }
+            });
+          }
+        };
+        fallbackImg.onerror = (fallbackErr) => {
+          console.error('Failed to load image without CORS:', fallbackErr);
+        };
+        console.log('Retrying image load without CORS:', imageUrl);
+        fallbackImg.src = imageUrl;
+      }
     };
-    
+
     img.crossOrigin = 'anonymous';
-    console.log('Setting image src:', selectedDetection.fullImageUrl);
-    img.src = selectedDetection.fullImageUrl;
+    console.log('Setting image src:', imageUrl);
+    img.src = imageUrl;
   }, [selectedDetection]);
+
+  const selectedImageUrl = getFrameImageUrl(selectedDetection);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -1032,7 +1130,7 @@ export default function DashboardPage({ user, onSignOut }) {
                 overflow: 'auto',
                 position: 'relative'
               }}>
-                {selectedDetection && selectedDetection.fullImageUrl ? (
+                {selectedDetection && selectedImageUrl ? (
                   <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <canvas
                       ref={canvasRef}
@@ -1045,8 +1143,8 @@ export default function DashboardPage({ user, onSignOut }) {
                       }}
                       alt="Frame with detections"
                       onClick={() => {
-                        if (selectedDetection && selectedDetection.fullImageUrl) {
-                          setModalImageUrl(selectedDetection.fullImageUrl);
+                        if (selectedDetection && selectedImageUrl) {
+                          setModalImageUrl(selectedImageUrl);
                           setImageModalOpen(true);
                         }
                       }}
@@ -1086,8 +1184,8 @@ export default function DashboardPage({ user, onSignOut }) {
                   </div>
                   <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #bfdbfe' }}>
                     <p style={{ margin: '0 0 2px 0', color: '#6b7280' }}>Image Status:</p>
-                    <p style={{ margin: 0, color: selectedDetection.fullImageUrl ? '#10b981' : '#ef4444', fontWeight: '500' }}>
-                      {selectedDetection.fullImageUrl ? '✓ Frame Loaded' : '✗ Frame Not Loaded'}
+                    <p style={{ margin: 0, color: selectedImageUrl ? '#10b981' : '#ef4444', fontWeight: '500' }}>
+                      {selectedImageUrl ? '✓ Frame Loaded' : '✗ Frame Not Loaded'}
                     </p>
                   </div>
                 </div>

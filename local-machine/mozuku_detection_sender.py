@@ -79,7 +79,7 @@ os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
 # ROS2 Launch Commands (model path will be injected dynamically)
 ROS2_LAUNCH_COMMANDS = {
-    'camera_bringup': 'ros2 launch camera_bringup detection_bringup.launch.py yolo_model:={model_path} confidence_threshold:=0.35 roi_mode:=rect roi_xmin:=0 roi_ymin:=0 roi_xmax:=1279 roi_ymax:=719 mm_per_px_x:=0.3 mm_per_px_y:=0.30 use_fp16:=true',
+    'camera_bringup': 'ros2 launch camera_bringup detection_bringup.launch.py yolo_model:={model_path} confidence_threshold:=0.35 roi_mode:=rect roi_xmin:=0 roi_ymin:=0 roi_xmax:=1279 roi_ymax:=719 mm_per_px_x:=0.3 mm_per_px_y:=0.30 use_fp16:=true save_raw_frames_debug:=false',
     'sdm_bridge': 'ros2 launch sdm_bridge_ros2 sdm.launch.py'
 }
 
@@ -211,6 +211,41 @@ class DetectionSender:
             import traceback
             print(f"   Traceback: {traceback.format_exc()}")
             return None
+
+    def _to_decimal(self, obj):
+        if isinstance(obj, float):
+            return Decimal(str(obj))
+        if isinstance(obj, dict):
+            return {k: self._to_decimal(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [self._to_decimal(v) for v in obj]
+        return obj
+
+    def normalize_detections(self, detections, frame_width, frame_height):
+        """Convert pixel bbox to YOLO normalized format"""
+        normalized = []
+        for det in detections:
+            bbox = det.get('bbox', {})
+            x = float(bbox.get('x', 0))
+            y = float(bbox.get('y', 0))
+            w = float(bbox.get('width', 0))
+            h = float(bbox.get('height', 0))
+            if frame_width <= 0 or frame_height <= 0:
+                continue
+            x_center = (x + (w / 2.0)) / frame_width
+            y_center = (y + (h / 2.0)) / frame_height
+            w_norm = w / frame_width
+            h_norm = h / frame_height
+            normalized.append({
+                'class': 0,
+                'x': x_center,
+                'y': y_center,
+                'w': w_norm,
+                'h': h_norm,
+                'label': det.get('label', 'unknown'),
+                'confidence': float(det.get('confidence', 0.0))
+            })
+        return normalized
     
     def save_impurity_to_dynamodb(self, impurity_id, timestamp, s3_url, detection):
         """Save impurity metadata to DynamoDB"""
@@ -235,6 +270,9 @@ class DetectionSender:
     def save_frame_to_dynamodb(self, frame_id, timestamp, frame_with_bbox_url, frame_without_bbox_url, detection_count, detections):
         """Save frame detection metadata to DynamoDB"""
         try:
+            s3_labels_path = ''
+            if frame_without_bbox_url and frame_without_bbox_url.startswith('s3://'):
+                s3_labels_path = frame_without_bbox_url.replace('.jpg', '.txt').replace('.png', '.txt')
             frame_table.put_item(
                 Item={
                     'frameId': frame_id,
@@ -243,6 +281,9 @@ class DetectionSender:
                     'detectionCount': detection_count,
                     's3UrlWithBbox': frame_with_bbox_url,
                     's3UrlWithoutBbox': frame_without_bbox_url,
+                    's3LabelsPath': s3_labels_path,
+                    'labelingStatus': 'auto',
+                    'detections': self._to_decimal(detections),
                     'modelUsed': 'yolov8-best',
                     'motorSpeed': 0,
                     'cameraSettings': json.dumps({'resolution': '1280x720', 'fps': 30})
@@ -333,6 +374,10 @@ class DetectionSender:
             # Extract and upload cropped impurities from ANNOTATED frame (yolov8_node already has correct bboxes)
             # Use the synchronized frame stored with the detection
             cropped_images = self.extract_and_upload_cropped_images(frame_to_use, detections, timestamp)
+
+            # Normalize detections for YOLO label generation
+            frame_h, frame_w = frame_raw.shape[:2]
+            normalized_detections = self.normalize_detections(detections, frame_w, frame_h)
             
             # Save frame metadata to DynamoDB
             success = self.save_frame_to_dynamodb(
@@ -341,7 +386,7 @@ class DetectionSender:
                 frame_with_url,
                 frame_without_url,
                 len(detections),
-                detections
+                normalized_detections
             )
             
             if success:
@@ -411,7 +456,7 @@ if ROS2_AVAILABLE:
                 # msg.width, msg.height (width/height in pixels)
                 
                 label = getattr(msg, 'class_name', 'unknown')
-                confidence = float(getattr(msg, 'score', 0.0))
+                confidence = float(getattr(msg, 'confidence', 0.0))
                 
                 # Calculate bbox from center + width/height
                 center_x = float(getattr(msg, 'center_x', 0.0))
@@ -519,12 +564,29 @@ def start_ros2_launch(job_id, command_key, user_id='web-user', model_url=None):
         return
     
     try:
+        # Prevent duplicate launches
+        existing = ros2_processes.get(command_key)
+        if existing:
+            if existing.poll() is None:
+                print(f"⚠️  {command_key} already running (PID: {existing.pid}) - skipping start")
+                update_job_status(job_id, 'running', f'{command_key} already running', user_id)
+                return
+            else:
+                del ros2_processes[command_key]
+
         # Download model from S3 if URL provided
         if command_key == 'camera_bringup' and model_url:
             print(f"🔄 Preparing model...")
             model_path = download_model_from_s3(model_url)
         else:
-            model_path = 'best.pt'  # Default fallback
+            # Fall back to cached local model if available
+            cache_candidate = os.path.join(MODEL_CACHE_DIR, 'best.pt')
+            if downloaded_model_path and os.path.exists(downloaded_model_path):
+                model_path = downloaded_model_path
+            elif os.path.exists(cache_candidate):
+                model_path = cache_candidate
+            else:
+                model_path = 'best.pt'  # Default fallback
         
         # Inject model path into command
         command = command_template.format(model_path=model_path)
