@@ -204,6 +204,10 @@ export default function HistoryPage({ user, onSignOut }) {
         };
         setSessionFrames(updatedFrames);
         
+        console.log('Labels updated successfully');
+        console.log('S3 Labels Path:', data.s3LabelsPath || 'Not available');
+        console.log('Metrics:', data.labelingMetrics);
+        
         setIsEditingLabels(false);
         alert(t('labeling.saveSuccess'));
       } else {
@@ -265,6 +269,7 @@ export default function HistoryPage({ user, onSignOut }) {
       if (response.ok) {
         const data = await response.json();
         console.log('markDone response:', data);
+        console.log('S3 Labels Path:', data.s3LabelsPath || 'Not available');
         const updatedFrames = [...sessionFrames];
         updatedFrames[currentFrameIndex] = {
           ...updatedFrames[currentFrameIndex],
@@ -336,6 +341,10 @@ export default function HistoryPage({ user, onSignOut }) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Feedback submitted successfully');
+        console.log('S3 Labels Path:', data.s3LabelsPath || 'Not available');
+        console.log('Metrics:', data.labelingMetrics);
+        
         const updatedFrames = [...sessionFrames];
         updatedFrames[currentFrameIndex] = {
           ...updatedFrames[currentFrameIndex],
