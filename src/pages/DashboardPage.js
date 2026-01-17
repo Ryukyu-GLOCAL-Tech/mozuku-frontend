@@ -2,6 +2,64 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
+const buildHttpsUrlFromS3 = (s3Url) => {
+  if (!s3Url || typeof s3Url !== 'string' || !s3Url.startsWith('s3://')) return s3Url;
+  const parts = s3Url.replace('s3://', '').split('/', 2);
+  const bucket = parts[0];
+  const key = parts[1] || '';
+  const region = process.env.REACT_APP_COGNITO_REGION || 'ap-northeast-1';
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+};
+
+const getFrameImageUrl = (frame) => {
+  if (!frame) return '';
+  const candidates = [
+    frame.fullImageUrlWithBbox,
+    frame.fullImageUrl,
+    frame.fullImageUrlWithoutBbox,
+    frame.s3UrlWithBbox,
+    frame.s3UrlWithoutBbox
+  ].filter(Boolean);
+  const chosen = candidates[0] || '';
+  return buildHttpsUrlFromS3(chosen);
+};
+
+const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
+  if (!detection) return null;
+
+  if (Array.isArray(detection.bbox) && detection.bbox.length >= 4) {
+    return detection.bbox;
+  }
+
+  const bboxObj = detection.bbox && typeof detection.bbox === 'object' ? detection.bbox : null;
+  if (bboxObj && Number.isFinite(bboxObj.x) && Number.isFinite(bboxObj.y) && Number.isFinite(bboxObj.width) && Number.isFinite(bboxObj.height)) {
+    const x1 = bboxObj.x;
+    const y1 = bboxObj.y;
+    const x2 = bboxObj.x + bboxObj.width;
+    const y2 = bboxObj.y + bboxObj.height;
+    return [x1, y1, x2, y2];
+  }
+
+  const hasNormalized = Number.isFinite(detection.x) && Number.isFinite(detection.y) && Number.isFinite(detection.w) && Number.isFinite(detection.h);
+  if (hasNormalized && imgWidth > 0 && imgHeight > 0) {
+    const xCenter = detection.x;
+    const yCenter = detection.y;
+    const w = detection.w;
+    const h = detection.h;
+
+    const isNormalized = xCenter <= 1 && yCenter <= 1 && w <= 1 && h <= 1;
+    if (isNormalized) {
+      const x1 = (xCenter - w / 2) * imgWidth;
+      const y1 = (yCenter - h / 2) * imgHeight;
+      const x2 = (xCenter + w / 2) * imgWidth;
+      const y2 = (yCenter + h / 2) * imgHeight;
+      return [x1, y1, x2, y2];
+    }
+  }
+
+  return null;
+};
+
 export default function DashboardPage({ user, onSignOut }) {
   const { t } = useTranslation();
   const [stats, setStats] = useState({
@@ -31,64 +89,6 @@ export default function DashboardPage({ user, onSignOut }) {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
   const canvasRef = useRef(null);
-
-  const buildHttpsUrlFromS3 = (s3Url) => {
-    if (!s3Url || typeof s3Url !== 'string' || !s3Url.startsWith('s3://')) return s3Url;
-    const parts = s3Url.replace('s3://', '').split('/', 2);
-    const bucket = parts[0];
-    const key = parts[1] || '';
-    const region = process.env.REACT_APP_COGNITO_REGION || 'ap-northeast-1';
-    return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
-  };
-
-  const getFrameImageUrl = (frame) => {
-    if (!frame) return '';
-    const candidates = [
-      frame.fullImageUrlWithBbox,
-      frame.fullImageUrl,
-      frame.fullImageUrlWithoutBbox,
-      frame.s3UrlWithBbox,
-      frame.s3UrlWithoutBbox
-    ].filter(Boolean);
-    const chosen = candidates[0] || '';
-    return buildHttpsUrlFromS3(chosen);
-  };
-
-  const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
-    if (!detection) return null;
-
-    if (Array.isArray(detection.bbox) && detection.bbox.length >= 4) {
-      return detection.bbox;
-    }
-
-    const bboxObj = detection.bbox && typeof detection.bbox === 'object' ? detection.bbox : null;
-    if (bboxObj && Number.isFinite(bboxObj.x) && Number.isFinite(bboxObj.y) && Number.isFinite(bboxObj.width) && Number.isFinite(bboxObj.height)) {
-      const x1 = bboxObj.x;
-      const y1 = bboxObj.y;
-      const x2 = bboxObj.x + bboxObj.width;
-      const y2 = bboxObj.y + bboxObj.height;
-      return [x1, y1, x2, y2];
-    }
-
-    const hasNormalized = Number.isFinite(detection.x) && Number.isFinite(detection.y) && Number.isFinite(detection.w) && Number.isFinite(detection.h);
-    if (hasNormalized && imgWidth > 0 && imgHeight > 0) {
-      const xCenter = detection.x;
-      const yCenter = detection.y;
-      const w = detection.w;
-      const h = detection.h;
-
-      const isNormalized = xCenter <= 1 && yCenter <= 1 && w <= 1 && h <= 1;
-      if (isNormalized) {
-        const x1 = (xCenter - w / 2) * imgWidth;
-        const y1 = (yCenter - h / 2) * imgHeight;
-        const x2 = (xCenter + w / 2) * imgWidth;
-        const y2 = (yCenter + h / 2) * imgHeight;
-        return [x1, y1, x2, y2];
-      }
-    }
-
-    return null;
-  };
 
   useEffect(() => {
     // Load stats when component mounts
