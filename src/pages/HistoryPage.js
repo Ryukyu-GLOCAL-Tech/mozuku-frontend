@@ -241,6 +241,15 @@ export default function HistoryPage({ user, onSignOut }) {
 
       const currentFrame = sessionFrames[currentFrameIndex];
       
+      const payload = {
+        action: 'markDone',
+        frameId: currentFrame.frameId,
+        userId: user.userId,
+        detectionCount: currentFrame.detectionCount
+      };
+      
+      console.log('Sending markDone payload:', payload);
+      
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/impurities`,
         {
@@ -249,17 +258,13 @@ export default function HistoryPage({ user, onSignOut }) {
             'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            action: 'markDone',
-            frameId: currentFrame.frameId,
-            userId: user.userId,
-            detectionCount: currentFrame.detectionCount
-          })
+          body: JSON.stringify(payload)
         }
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log('markDone response:', data);
         const updatedFrames = [...sessionFrames];
         updatedFrames[currentFrameIndex] = {
           ...updatedFrames[currentFrameIndex],
@@ -271,6 +276,7 @@ export default function HistoryPage({ user, onSignOut }) {
         alert(t('labeling.saveSuccess'));
       } else {
         const error = await response.json();
+        console.error('markDone error response:', error);
         alert(t('labeling.saveError') + ': ' + error.error);
       }
     } catch (err) {
