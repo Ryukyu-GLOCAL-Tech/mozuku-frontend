@@ -146,6 +146,13 @@ export default function HistoryPage({ user, onSignOut }) {
     }
   };
 
+  const refreshSessionFrames = async () => {
+    if (!selectedSession?.sessionId) return;
+    const index = currentFrameIndex;
+    await loadSessionFrames(selectedSession.sessionId);
+    setCurrentFrameIndex(index);
+  };
+
   const handleNextFrame = () => {
     if (currentFrameIndex < sessionFrames.length - 1) {
       setCurrentFrameIndex(currentFrameIndex + 1);
@@ -210,6 +217,7 @@ export default function HistoryPage({ user, onSignOut }) {
         
         setIsEditingLabels(false);
         alert(t('labeling.saveSuccess'));
+        await refreshSessionFrames();
       } else {
         let errorMessage = 'Unknown error';
         try {
@@ -284,6 +292,7 @@ export default function HistoryPage({ user, onSignOut }) {
         };
         setSessionFrames(updatedFrames);
         alert(t('labeling.saveSuccess'));
+        await refreshSessionFrames();
       } else {
         const error = await response.json();
         console.error('markDone error response:', error);
@@ -361,6 +370,10 @@ export default function HistoryPage({ user, onSignOut }) {
         setSessionFrames(updatedFrames);
         setShowFeedbackForm(false);
         alert(t('labeling.saveSuccess'));
+        if (feedbackData.type === 'missingObjects') {
+          setIsEditingLabels(true);
+        }
+        await refreshSessionFrames();
       } else {
         const error = await response.json();
         alert(t('labeling.saveError') + ': ' + error.error);
