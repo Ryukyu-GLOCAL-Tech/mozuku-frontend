@@ -29,20 +29,24 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
   useEffect(() => {
     if (!imageUrl) return;
     
+    console.log('🖼️ BboxAnnotator loading image:', imageUrl);
+    console.log('  Detections count:', detections?.length || 0);
+    
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
     img.onload = () => {
+      console.log('✅ Image loaded successfully:', img.width, 'x', img.height);
       setImageDimensions({ width: img.width, height: img.height });
       setImageLoaded(true);
     };
     
     img.onerror = () => {
-      console.error('Failed to load image:', imageUrl);
+      console.error('❌ Failed to load image:', imageUrl);
     };
     
     img.src = imageUrl;
-  }, [imageUrl]);
+  }, [imageUrl, detections]);
 
   // Draw bboxes on canvas
   useEffect(() => {
