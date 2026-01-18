@@ -377,10 +377,7 @@ export default function HistoryPage({ user, onSignOut }) {
         setSessionFrames(updatedFrames);
         setShowFeedbackForm(false);
         alert(t('labeling.saveSuccess'));
-        if (feedbackData.type === 'missingObjects') {
-          setIsEditingLabels(true);
-        }
-        await refreshSessionFrames();
+        // Don't reload frames or edit - just close the feedback form
       } else {
         const error = await response.json();
         alert(t('labeling.saveError') + ': ' + error.error);
