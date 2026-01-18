@@ -143,7 +143,7 @@ export default function HistoryPage({ user, onSignOut }) {
       if (response.ok) {
         const data = await response.json();
         console.log('📦 Loaded session frames:', data.frames?.length, 'frames');
-        data.frames?.forEach((f, i) => console.log(`  Frame ${i}: ${f.frameId.substring(0, 8)}... withBbox: ${f.s3UrlWithBbox?.substring(f.s3UrlWithBbox.length - 50)} withoutBbox: ${f.s3UrlWithoutBbox?.substring(f.s3UrlWithoutBbox.length - 50)}`));
+        data.frames?.forEach((f, i) => console.log(`  Frame ${i}: ${f.frameId.substring(0, 8)}...\n    withBbox: ${f.s3UrlWithBbox}\n    withoutBbox: ${f.s3UrlWithoutBbox}`));
         setSessionFrames(data.frames || []);
       } else {
         console.error('Failed to load session frames');
