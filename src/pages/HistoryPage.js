@@ -62,7 +62,7 @@ export default function HistoryPage({ user, onSignOut }) {
 
       // Build query parameters
       const params = new URLSearchParams({
-        userId: user.userId || user.username,
+        userId: user.username,  // Use actual Cognito username
         page: currentPage,
         limit: 20,
         sortBy: sortBy,
@@ -125,7 +125,7 @@ export default function HistoryPage({ user, onSignOut }) {
       if (!authToken) return;
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}/detection-history?userId=${user.userId || user.username}&sessionId=${sessionId}`,
+        `${process.env.REACT_APP_API_BASE_URL}/detection-history?userId=${user.username}&sessionId=${sessionId}`,
         {
           headers: {
             'Authorization': `Bearer ${authToken}`

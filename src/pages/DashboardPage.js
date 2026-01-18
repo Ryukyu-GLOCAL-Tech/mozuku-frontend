@@ -126,7 +126,7 @@ export default function DashboardPage({ user, onSignOut }) {
 
       // Load overall stats from session history (using existing GetDetectionHistory endpoint)
       const params = new URLSearchParams({
-        userId: user.userId || user.username,
+        userId: user.username,
         page: 1,
         limit: 100  // Get more to calculate accuracy
       });
@@ -210,7 +210,7 @@ export default function DashboardPage({ user, onSignOut }) {
 
       // Get active sessions from detection history
       const params = new URLSearchParams({
-        userId: user.userId || user.username,
+        userId: user.username,
         status: 'active',
         limit: 1
       });
@@ -249,7 +249,8 @@ export default function DashboardPage({ user, onSignOut }) {
       
       const payload = {
         command: command,
-        jobId: jobId
+        jobId: jobId,
+        userId: user.username  // Send the actual Cognito username
       };
       
       // Add model URL if starting camera and URL is provided
