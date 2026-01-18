@@ -73,6 +73,9 @@ export default function HistoryPage({ user, onSignOut }) {
       if (endDate) params.append('endDate', new Date(endDate).getTime());
       if (statusFilter) params.append('status', statusFilter);
 
+      console.log('Loading history with userId:', user.username);
+      console.log('API URL:', `${process.env.REACT_APP_API_BASE_URL}/detection-history?${params}`);
+
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/detection-history?${params}`,
         {
@@ -82,14 +85,18 @@ export default function HistoryPage({ user, onSignOut }) {
         }
       );
 
+      console.log('History response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('History data:', data);
         setSessions(data.sessions || []);
         setPagination(data.pagination || {});
         setOverallStats(data.overallStats || null);
         setTodayStats(data.todayStats || null);
       } else {
-        console.error('Failed to load history');
+        const errorText = await response.text();
+        console.error('Failed to load history:', response.status, errorText);
       }
     } catch (err) {
       console.error('Error loading history:', err);
