@@ -142,6 +142,8 @@ export default function HistoryPage({ user, onSignOut }) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('📦 Loaded session frames:', data.frames?.length, 'frames');
+        data.frames?.forEach((f, i) => console.log(`  Frame ${i}: ${f.frameId.substring(0, 8)}... withBbox: ${f.s3UrlWithBbox?.substring(f.s3UrlWithBbox.length - 50)} withoutBbox: ${f.s3UrlWithoutBbox?.substring(f.s3UrlWithoutBbox.length - 50)}`));
         setSessionFrames(data.frames || []);
       } else {
         console.error('Failed to load session frames');
@@ -895,7 +897,12 @@ export default function HistoryPage({ user, onSignOut }) {
                 <h3 style={{ margin: 0 }}>{t('session.detectionFrames')}</h3>
                 {sessionFrames.length > 0 && !isEditingLabels && (
                   <button
-                    onClick={() => setIsEditingLabels(true)}
+                    onClick={() => {
+                      console.log('✏️ Edit Labels clicked for frame index:', currentFrameIndex, 'frameId:', sessionFrames[currentFrameIndex]?.frameId?.substring(0, 8));
+                      console.log('  withBbox:', sessionFrames[currentFrameIndex]?.s3UrlWithBbox?.substring(sessionFrames[currentFrameIndex]?.s3UrlWithBbox.length - 50));
+                      console.log('  withoutBbox:', sessionFrames[currentFrameIndex]?.s3UrlWithoutBbox?.substring(sessionFrames[currentFrameIndex]?.s3UrlWithoutBbox.length - 50));
+                      setIsEditingLabels(true);
+                    }}
                     style={{
                       padding: '8px 16px',
                       backgroundColor: '#10b981',
