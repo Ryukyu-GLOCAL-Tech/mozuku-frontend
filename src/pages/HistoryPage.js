@@ -200,7 +200,7 @@ export default function HistoryPage({ user, onSignOut }) {
           body: JSON.stringify({
             action: 'updateLabels',
             frameId: currentFrame.frameId,
-            userId: 'web-user',
+            userId: 'web-user',  // Frames are stored with web-user, not Cognito username
             corrections: corrections
           })
         }
