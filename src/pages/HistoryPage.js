@@ -1049,6 +1049,114 @@ export default function HistoryPage({ user, onSignOut }) {
                     </div>
                   </div>
 
+                  {/* Accuracy Metrics (only for verified frames) */}
+                  {sessionFrames[currentFrameIndex].labelingStatus === 'verified' && 
+                   sessionFrames[currentFrameIndex].labelingMetrics && (
+                    <div style={{
+                      marginBottom: '15px',
+                      padding: '15px',
+                      backgroundColor: '#0f172a',
+                      borderRadius: '8px',
+                      border: '2px solid #10b981'
+                    }}>
+                      <div style={{ 
+                        fontSize: '14px', 
+                        fontWeight: 'bold', 
+                        color: '#10b981',
+                        marginBottom: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        📊 Detection Accuracy Metrics
+                      </div>
+                      
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(4, 1fr)', 
+                        gap: '12px',
+                        marginBottom: '10px'
+                      }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>Precision</div>
+                          <div style={{ 
+                            fontSize: '20px', 
+                            fontWeight: 'bold',
+                            color: sessionFrames[currentFrameIndex].labelingMetrics.precision >= 0.9 ? '#10b981' : 
+                                   sessionFrames[currentFrameIndex].labelingMetrics.precision >= 0.7 ? '#f59e0b' : '#ef4444'
+                          }}>
+                            {(sessionFrames[currentFrameIndex].labelingMetrics.precision * 100).toFixed(0)}%
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#64748b' }}>How accurate?</div>
+                        </div>
+                        
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>Recall</div>
+                          <div style={{ 
+                            fontSize: '20px', 
+                            fontWeight: 'bold',
+                            color: sessionFrames[currentFrameIndex].labelingMetrics.recall >= 0.9 ? '#10b981' : 
+                                   sessionFrames[currentFrameIndex].labelingMetrics.recall >= 0.7 ? '#f59e0b' : '#ef4444'
+                          }}>
+                            {(sessionFrames[currentFrameIndex].labelingMetrics.recall * 100).toFixed(0)}%
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#64748b' }}>Found objects?</div>
+                        </div>
+                        
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>Accuracy</div>
+                          <div style={{ 
+                            fontSize: '20px', 
+                            fontWeight: 'bold',
+                            color: sessionFrames[currentFrameIndex].labelingMetrics.accuracy >= 0.9 ? '#10b981' : 
+                                   sessionFrames[currentFrameIndex].labelingMetrics.accuracy >= 0.7 ? '#f59e0b' : '#ef4444'
+                          }}>
+                            {(sessionFrames[currentFrameIndex].labelingMetrics.accuracy * 100).toFixed(0)}%
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#64748b' }}>Overall rate</div>
+                        </div>
+                        
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>F1 Score</div>
+                          <div style={{ 
+                            fontSize: '20px', 
+                            fontWeight: 'bold',
+                            color: sessionFrames[currentFrameIndex].labelingMetrics.f1_score >= 0.9 ? '#10b981' : 
+                                   sessionFrames[currentFrameIndex].labelingMetrics.f1_score >= 0.7 ? '#f59e0b' : '#ef4444'
+                          }}>
+                            {(sessionFrames[currentFrameIndex].labelingMetrics.f1_score * 100).toFixed(0)}%
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#64748b' }}>Balanced</div>
+                        </div>
+                      </div>
+                      
+                      {/* Detail Breakdown */}
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#94a3b8',
+                        padding: '8px',
+                        backgroundColor: '#1e293b',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-around',
+                        gap: '8px'
+                      }}>
+                        <span>
+                          <strong style={{ color: '#10b981' }}>TP:</strong> {sessionFrames[currentFrameIndex].labelingMetrics.TP || 0}
+                        </span>
+                        <span>
+                          <strong style={{ color: '#ef4444' }}>FP:</strong> {sessionFrames[currentFrameIndex].labelingMetrics.FP || 0}
+                        </span>
+                        <span>
+                          <strong style={{ color: '#f59e0b' }}>FN:</strong> {sessionFrames[currentFrameIndex].labelingMetrics.FN || 0}
+                        </span>
+                        <span>
+                          <strong>Total:</strong> {sessionFrames[currentFrameIndex].labelingMetrics.totalActual || 0}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Navigation Buttons */}
                   {!isEditingLabels && (
                     <>
