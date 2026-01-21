@@ -1054,7 +1054,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     const frame = sessionFrames[currentFrameIndex];
                     
                     // For auto-labeled frames (not yet verified), show assumed perfect metrics
-                    const metrics = frame.labelingMetrics || {
+                    let metrics = frame.labelingMetrics || {
                       TP: frame.detectionCount || 0,
                       FP: 0,
                       FN: 0,
@@ -1064,6 +1064,14 @@ export default function HistoryPage({ user, onSignOut }) {
                       accuracy: 1.0,
                       f1_score: 1.0
                     };
+                    
+                    // Fix for old data: if accuracy is missing, calculate it from TP/FP/FN
+                    if (metrics.accuracy === undefined || isNaN(metrics.accuracy)) {
+                      const TP = metrics.TP || 0;
+                      const FP = metrics.FP || 0;
+                      const FN = metrics.FN || 0;
+                      metrics.accuracy = (TP + FP + FN) > 0 ? TP / (TP + FP + FN) : 1.0;
+                    }
                     
                     const isVerified = frame.labelingStatus === 'verified';
                     
