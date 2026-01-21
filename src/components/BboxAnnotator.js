@@ -238,6 +238,9 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel, 
   };
 
   const handleSaveLabels = () => {
+    console.log('💾 BboxAnnotator: Calculating corrections...');
+    console.log('  Total bboxes:', bboxes.length);
+    
     const corrections = {
       kept: [],
       deleted: [],
@@ -245,15 +248,14 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel, 
     };
     
     bboxes.forEach((box, idx) => {
-      if (box.status === 'kept' || (box.status === 'original' && selectedBboxIndex !== idx)) {
-        // Keep original index
-        if (box.status === 'original' || box.status === 'kept') {
-          corrections.kept.push(box.id);
-        }
-      } else if (box.status === 'deleted') {
-        corrections.deleted.push(box.id);
+      console.log(`  Box ${idx}: status=${box.status}, label=${box.label}, id=${box.id}`);
+      
+      if (box.status === 'deleted') {
+        // Box was explicitly deleted
+        corrections.deleted.push(idx); // Use index, not ID
+        console.log(`    ❌ Deleted (index ${idx})`);
       } else if (box.status === 'added') {
-        // Convert to YOLO format (normalized)
+        // New box added by user
         const [x1, y1, x2, y2] = box.bbox;
         const x_center = (x1 + x2) / 2 / imageDimensions.width;
         const y_center = (y1 + y2) / 2 / imageDimensions.height;
@@ -265,10 +267,22 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel, 
           x: x_center,
           y: y_center,
           w: width,
-          h: height
+          h: height,
+          label: 'impurity',
+          confidence: 1.0
         });
+        console.log(`    ➕ Added (YOLO: ${x_center.toFixed(3)}, ${y_center.toFixed(3)}, ${width.toFixed(3)}, ${height.toFixed(3)})`);
+      } else if (box.status === 'kept' || box.status === 'original') {
+        // Box was kept (either explicitly or unchanged original)
+        corrections.kept.push(idx); // Use index, not ID
+        console.log(`    ✅ Kept (index ${idx})`);
       }
     });
+    
+    console.log('📊 Final corrections:');
+    console.log('  Kept:', corrections.kept);
+    console.log('  Deleted:', corrections.deleted);
+    console.log('  Added:', corrections.added);
     
     onSave(corrections);
   };

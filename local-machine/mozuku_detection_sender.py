@@ -212,6 +212,59 @@ class DetectionSender:
             print(f"   Traceback: {traceback.format_exc()}")
             return None
 
+    def upload_labels_to_s3(self, detections, bucket, key):
+        """
+        Upload YOLO format labels .txt file to S3
+        
+        Args:
+            detections: List of normalized detections in YOLO format
+            bucket: S3 bucket name
+            key: S3 key (path)
+        
+        Returns:
+            S3 URL if successful, None otherwise
+        """
+        try:
+            # Generate YOLO labels content (one line per detection)
+            # Format: class x_center y_center width height
+            lines = []
+            for det in detections:
+                class_id = int(det.get('class', 0))
+                x = float(det.get('x', 0))
+                y = float(det.get('y', 0))
+                w = float(det.get('w', 0))
+                h = float(det.get('h', 0))
+                
+                # YOLO format: class x_center y_center width height
+                line = f"{class_id} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
+                lines.append(line)
+            
+            labels_content = '\n'.join(lines)
+            
+            print(f"   📝 Uploading YOLO labels to S3: {len(detections)} detections")
+            
+            # Upload to S3
+            response = s3_client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=labels_content.encode('utf-8'),
+                ContentType='text/plain',
+                Metadata={
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'detection_count': str(len(detections)),
+                    'format': 'yolo'
+                }
+            )
+            print(f"   ✅ Labels uploaded: {response.get('ResponseMetadata', {}).get('HTTPStatusCode')}")
+            
+            s3_url = f"s3://{bucket}/{key}"
+            return s3_url
+        except Exception as e:
+            print(f"   ❌ Labels Upload Error: {type(e).__name__}: {str(e)}")
+            import traceback
+            print(f"   Traceback: {traceback.format_exc()}")
+            return None
+
     def _to_decimal(self, obj):
         if isinstance(obj, float):
             return Decimal(str(obj))
@@ -378,6 +431,10 @@ class DetectionSender:
             # Normalize detections for YOLO label generation
             frame_h, frame_w = frame_raw.shape[:2]
             normalized_detections = self.normalize_detections(detections, frame_w, frame_h)
+            
+            # Generate and upload YOLO labels .txt file
+            labels_key = f"{self.user_id}/{timestamp}/frame-no-bbox.txt"
+            labels_url = self.upload_labels_to_s3(normalized_detections, FRAMES_WITHOUT_BBOX_BUCKET, labels_key)
             
             # Save frame metadata to DynamoDB
             success = self.save_frame_to_dynamodb(

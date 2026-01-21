@@ -197,6 +197,9 @@ export default function HistoryPage({ user, onSignOut }) {
         return;
       }
       
+      console.log('💾 Saving labels for frame:', currentFrame.frameId?.substring(0, 8));
+      console.log('  Corrections being sent:', corrections);
+      
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/impurities`,
         {
@@ -217,16 +220,30 @@ export default function HistoryPage({ user, onSignOut }) {
       if (response.ok) {
         const data = await response.json();
         
-        console.log('Labels updated successfully');
-        console.log('S3 Labels Path:', data.s3LabelsPath || 'Not available');
-        console.log('Metrics:', data.labelingMetrics);
-        console.log('Updated detections:', data.updatedDetections);
+        console.log('✅ Labels updated successfully');
+        console.log('  S3 Labels Path:', data.s3LabelsPath || 'Not available');
+        console.log('  Metrics:', data.labelingMetrics);
+        console.log('  Updated detections from API:', data.updatedDetections);
+        
+        // If API returns updated detections, use them immediately
+        if (data.updatedDetections && Array.isArray(data.updatedDetections)) {
+          console.log('  📥 Using updated detections from API response');
+          const updatedFrames = [...sessionFrames];
+          updatedFrames[currentFrameIndex] = {
+            ...updatedFrames[currentFrameIndex],
+            detections: data.updatedDetections,
+            labelingStatus: 'verified',
+            labelingMetrics: data.labelingMetrics,
+            detectionCount: data.updatedDetections.length
+          };
+          setSessionFrames(updatedFrames);
+        } else {
+          console.log('  🔄 Refreshing frames from API (no updatedDetections in response)');
+          // If API doesn't return updated detections, refresh from DynamoDB
+          await refreshSessionFrames();
+        }
         
         setIsEditingLabels(false);
-        
-        // Refresh session frames to get the updated detections from DynamoDB
-        await refreshSessionFrames();
-        
         alert(t('labeling.saveSuccess'));
       } else {
         let errorMessage = 'Unknown error';
