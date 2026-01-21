@@ -164,8 +164,10 @@ export default function HistoryPage({ user, onSignOut }) {
   const refreshSessionFrames = async () => {
     if (!selectedSession?.sessionId) return;
     const index = currentFrameIndex;
+    console.log('🔄 Refreshing session frames for session:', selectedSession.sessionId);
     await loadSessionFrames(selectedSession.sessionId);
     setCurrentFrameIndex(index);
+    console.log('✅ Refresh complete, current frame index:', index);
   };
 
   const handleNextFrame = () => {
@@ -198,7 +200,17 @@ export default function HistoryPage({ user, onSignOut }) {
       }
       
       console.log('💾 Saving labels for frame:', currentFrame.frameId?.substring(0, 8));
-      console.log('  Corrections being sent:', corrections);
+      console.log('  Corrections being sent:', JSON.stringify(corrections, null, 2));
+      console.log('  Current detections count:', currentFrame.detections?.length);
+      
+      const payload = {
+        action: 'updateLabels',
+        frameId: currentFrame.frameId,
+        userId: 'web-user',
+        corrections: corrections
+      };
+      
+      console.log('📤 Request payload:', JSON.stringify(payload, null, 2));
       
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL}/impurities`,
@@ -221,13 +233,16 @@ export default function HistoryPage({ user, onSignOut }) {
         const data = await response.json();
         
         console.log('✅ Labels updated successfully');
+        console.log('  Full API response:', JSON.stringify(data, null, 2));
         console.log('  S3 Labels Path:', data.s3LabelsPath || 'Not available');
         console.log('  Metrics:', data.labelingMetrics);
         console.log('  Updated detections from API:', data.updatedDetections);
+        console.log('  Updated detections count:', data.updatedDetections?.length);
         
         // If API returns updated detections, use them immediately
         if (data.updatedDetections && Array.isArray(data.updatedDetections)) {
           console.log('  📥 Using updated detections from API response');
+          console.log('  Detections to set:', JSON.stringify(data.updatedDetections, null, 2));
           const updatedFrames = [...sessionFrames];
           updatedFrames[currentFrameIndex] = {
             ...updatedFrames[currentFrameIndex],
@@ -237,6 +252,7 @@ export default function HistoryPage({ user, onSignOut }) {
             detectionCount: data.updatedDetections.length
           };
           setSessionFrames(updatedFrames);
+          console.log('  ✅ Local state updated');
         } else {
           console.log('  🔄 Refreshing frames from API (no updatedDetections in response)');
           // If API doesn't return updated detections, refresh from DynamoDB
@@ -246,6 +262,8 @@ export default function HistoryPage({ user, onSignOut }) {
         setIsEditingLabels(false);
         alert(t('labeling.saveSuccess'));
       } else {
+        const errorText = await response.text();
+        console.error('❌ API Error:', response.status, errorText);
         let errorMessage = 'Unknown error';
         try {
           const error = await response.json();
