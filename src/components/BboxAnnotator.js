@@ -13,17 +13,58 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel, 
 
   // Convert detections to bbox format on mount
   useEffect(() => {
-    if (detections && detections.length > 0) {
-      const converted = detections.map((det, idx) => ({
-        id: idx,
-        bbox: det.bbox || [],
-        label: det.label || 'impurity',
-        confidence: det.confidence || 0,
-        status: 'original' // 'original', 'kept', 'deleted', 'added'
-      }));
+    console.log('🔄 BboxAnnotator: Converting detections to bbox format');
+    console.log('  Input detections:', detections);
+    console.log('  Image dimensions:', imageDimensions);
+    
+    if (detections && detections.length > 0 && imageDimensions.width > 0) {
+      const converted = detections.map((det, idx) => {
+        let bboxArray;
+        
+        // Check if detection has bbox array format [x1, y1, x2, y2]
+        if (det.bbox && Array.isArray(det.bbox) && det.bbox.length === 4) {
+          bboxArray = det.bbox;
+          console.log(`  Detection ${idx}: Using existing bbox array`, bboxArray);
+        }
+        // Check if detection is in YOLO normalized format {x, y, w, h}
+        else if (det.x !== undefined && det.y !== undefined && det.w !== undefined && det.h !== undefined) {
+          // Convert YOLO normalized format to pixel coordinates
+          const centerX = det.x * imageDimensions.width;
+          const centerY = det.y * imageDimensions.height;
+          const width = det.w * imageDimensions.width;
+          const height = det.h * imageDimensions.height;
+          
+          const x1 = centerX - width / 2;
+          const y1 = centerY - height / 2;
+          const x2 = centerX + width / 2;
+          const y2 = centerY + height / 2;
+          
+          bboxArray = [x1, y1, x2, y2];
+          console.log(`  Detection ${idx}: Converted from YOLO format`, {
+            yolo: { x: det.x, y: det.y, w: det.w, h: det.h },
+            bbox: bboxArray
+          });
+        }
+        else {
+          console.warn(`  Detection ${idx}: Unknown format, skipping`, det);
+          return null;
+        }
+        
+        return {
+          id: idx,
+          bbox: bboxArray,
+          label: det.label || 'impurity',
+          confidence: det.confidence || 0,
+          status: 'original' // 'original', 'kept', 'deleted', 'added'
+        };
+      }).filter(Boolean); // Remove null entries
+      
+      console.log('  ✅ Converted bboxes:', converted);
       setBboxes(converted);
+    } else if (detections && detections.length > 0) {
+      console.log('  ⏳ Waiting for image to load before converting detections');
     }
-  }, [detections]);
+  }, [detections, imageDimensions]);
 
   // Load image first
   useEffect(() => {

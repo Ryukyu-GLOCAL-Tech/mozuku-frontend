@@ -143,7 +143,13 @@ export default function HistoryPage({ user, onSignOut }) {
       if (response.ok) {
         const data = await response.json();
         console.log('📦 Loaded session frames:', data.frames?.length, 'frames');
-        data.frames?.forEach((f, i) => console.log(`  Frame ${i}: ${f.frameId.substring(0, 8)}...\n    withBbox: ${f.s3UrlWithBbox}\n    withoutBbox: ${f.s3UrlWithoutBbox}`));
+        data.frames?.forEach((f, i) => {
+          console.log(`  Frame ${i}: ${f.frameId.substring(0, 8)}...`);
+          console.log(`    withBbox: ${f.s3UrlWithBbox}`);
+          console.log(`    withoutBbox: ${f.s3UrlWithoutBbox}`);
+          console.log(`    labelingStatus: ${f.labelingStatus}`);
+          console.log(`    detections count: ${f.detections?.length || 0}`);
+        });
         setSessionFrames(data.frames || []);
       } else {
         console.error('Failed to load session frames');
@@ -211,22 +217,17 @@ export default function HistoryPage({ user, onSignOut }) {
       if (response.ok) {
         const data = await response.json();
         
-        // Update the frame in sessionFrames with new labeling status
-        const updatedFrames = [...sessionFrames];
-        updatedFrames[currentFrameIndex] = {
-          ...updatedFrames[currentFrameIndex],
-          labelingStatus: 'verified',
-          labelingMetrics: data.labelingMetrics
-        };
-        setSessionFrames(updatedFrames);
-        
         console.log('Labels updated successfully');
         console.log('S3 Labels Path:', data.s3LabelsPath || 'Not available');
         console.log('Metrics:', data.labelingMetrics);
+        console.log('Updated detections:', data.updatedDetections);
         
         setIsEditingLabels(false);
-        alert(t('labeling.saveSuccess'));
+        
+        // Refresh session frames to get the updated detections from DynamoDB
         await refreshSessionFrames();
+        
+        alert(t('labeling.saveSuccess'));
       } else {
         let errorMessage = 'Unknown error';
         try {
@@ -942,6 +943,10 @@ export default function HistoryPage({ user, onSignOut }) {
                         padding: '10px',
                         marginBottom: '15px'
                       }}>
+                        {console.log('🎨 Rendering verified frame with BboxAnnotator:') || null}
+                        {console.log('  Frame ID:', sessionFrames[currentFrameIndex].frameId?.substring(0, 8)) || null}
+                        {console.log('  Detections:', sessionFrames[currentFrameIndex].detections) || null}
+                        {console.log('  Detections count:', sessionFrames[currentFrameIndex].detections?.length) || null}
                         <BboxAnnotator 
                           imageUrl={sessionFrames[currentFrameIndex].s3UrlWithoutBbox}
                           detections={sessionFrames[currentFrameIndex].detections || []}
