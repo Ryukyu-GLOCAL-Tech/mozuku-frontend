@@ -933,9 +933,28 @@ export default function HistoryPage({ user, onSignOut }) {
                       onCancel={handleCancelEdit}
                       saving={savingLabels}
                     />
+                  ) : sessionFrames[currentFrameIndex].labelingStatus === 'verified' ? (
+                    <>
+                      {/* For verified frames, use BboxAnnotator in read-only mode to show updated bboxes */}
+                      <div style={{
+                        backgroundColor: '#0f172a',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        marginBottom: '15px'
+                      }}>
+                        <BboxAnnotator 
+                          imageUrl={sessionFrames[currentFrameIndex].s3UrlWithoutBbox}
+                          detections={sessionFrames[currentFrameIndex].detections || []}
+                          onSave={() => {}}
+                          onCancel={() => {}}
+                          saving={false}
+                          readOnly={true}
+                        />
+                      </div>
+                    </>
                   ) : (
                     <>
-                      {/* Frame Image */}
+                      {/* Frame Image - for auto-labeled frames, show original with-bbox image */}
                       <div style={{
                         backgroundColor: '#0f172a',
                         borderRadius: '8px',

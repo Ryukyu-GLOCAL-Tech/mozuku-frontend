@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }) {
+export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel, readOnly = false }) {
   const canvasRef = useRef(null);
   const [bboxes, setBboxes] = useState([]);
   const [editMode, setEditMode] = useState(false);
@@ -106,7 +106,7 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
   }, [imageLoaded, bboxes, currentBox, selectedBboxIndex, imageUrl]);
 
   const handleMouseDown = (e) => {
-    if (!editMode) return;
+    if (!editMode || readOnly) return;
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -235,28 +235,30 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
   return (
     <div style={{ marginTop: '20px' }}>
       {/* Edit Mode Toggle */}
-      <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          onClick={() => setEditMode(!editMode)}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: editMode ? '#ef4444' : '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          {editMode ? '✏️ Edit Mode: ON' : '👁️ View Mode'}
-        </button>
-        
-        {editMode && (
-          <span style={{ color: '#94a3b8', fontSize: '13px' }}>
-            Click boxes to select, drag to draw new boxes
-          </span>
-        )}
-      </div>
+      {!readOnly && (
+        <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => setEditMode(!editMode)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: editMode ? '#ef4444' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            {editMode ? '✏️ Edit Mode: ON' : '👁️ View Mode'}
+          </button>
+          
+          {editMode && (
+            <span style={{ color: '#94a3b8', fontSize: '13px' }}>
+              Click boxes to select, drag to draw new boxes
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Canvas */}
       <div style={{
@@ -316,7 +318,7 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
                 </span>
               </div>
               
-              {editMode && idx === selectedBboxIndex && (
+              {!readOnly && editMode && idx === selectedBboxIndex && (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {box.status !== 'kept' && (
                     <button
@@ -356,35 +358,37 @@ export default function BboxAnnotator({ imageUrl, detections, onSave, onCancel }
       </div>
 
       {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-        <button
-          onClick={onCancel}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#334155',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSaveLabels}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          💾 Save Labels
-        </button>
-      </div>
+      {!readOnly && (
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#334155',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveLabels}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            💾 Save Labels
+          </button>
+        </div>
+      )}
     </div>
   );
 }

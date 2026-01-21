@@ -371,9 +371,9 @@ class DetectionSender:
             if not (frame_without_url and frame_with_url):
                 return False
             
-            # Extract and upload cropped impurities from ANNOTATED frame (yolov8_node already has correct bboxes)
-            # Use the synchronized frame stored with the detection
-            cropped_images = self.extract_and_upload_cropped_images(frame_to_use, detections, timestamp)
+            # Extract and upload cropped impurities from RAW frame (without bboxes drawn)
+            # This ensures cropped images don't have bounding boxes on them
+            cropped_images = self.extract_and_upload_cropped_images(frame_raw, detections, timestamp)
 
             # Normalize detections for YOLO label generation
             frame_h, frame_w = frame_raw.shape[:2]
@@ -483,6 +483,7 @@ if ROS2_AVAILABLE:
                     'confidence': confidence,
                     'bbox': bbox_data,
                     'frame_with_bbox': self.last_annotated_frame.copy() if self.last_annotated_frame is not None else None,
+                    'frame_raw': self.last_frame.copy() if self.last_frame is not None else None,  # Store raw frame synchronized with detection
                     'frame_timestamp': frame_timestamp
                 }
                 
@@ -531,9 +532,28 @@ if ROS2_AVAILABLE:
                     def send_with_cleanup():
                         try:
                             self.get_logger().info(f"🚀 Uploading frame with {len(frame_detections)} detection(s) to S3...")
+                            
+                            # Use synchronized frames stored with the first detection
+                            first_detection = frame_detections[0]
+                            frame_with_bbox = first_detection.get('frame_with_bbox')
+                            frame_raw = first_detection.get('frame_raw')
+                            
+                            # Fallback to last known frames if synchronized frames not available
+                            if frame_with_bbox is None:
+                                self.get_logger().warn("⚠️ No synchronized frame_with_bbox, using last_annotated_frame")
+                                frame_with_bbox = self.last_annotated_frame.copy()
+                            if frame_raw is None:
+                                self.get_logger().warn("⚠️ No synchronized frame_raw, using last_frame")
+                                frame_raw = self.last_frame.copy() if self.last_frame is not None else None
+                            
+                            # Validate we have both frames
+                            if frame_with_bbox is None or frame_raw is None:
+                                self.get_logger().error("❌ Missing synchronized frames, skipping upload")
+                                return
+                            
                             self.sender.send_detection(
-                                self.last_annotated_frame.copy(), 
-                                self.last_frame.copy(), 
+                                frame_with_bbox, 
+                                frame_raw, 
                                 frame_detections  # Send all detections from this frame
                             )
                             self.get_logger().info(f"✅ Upload complete")
