@@ -13,12 +13,14 @@ const buildHttpsUrlFromS3 = (s3Url) => {
 
 const getFrameImageUrl = (frame) => {
   if (!frame) return '';
+  // Prefer frame WITHOUT bbox to draw our own red bbox on top
+  // This avoids overlapping bboxes from yolov8 node
   const candidates = [
+    frame.fullImageUrlWithoutBbox,
+    frame.s3UrlWithoutBbox,
     frame.fullImageUrlWithBbox,
     frame.fullImageUrl,
-    frame.fullImageUrlWithoutBbox,
-    frame.s3UrlWithBbox,
-    frame.s3UrlWithoutBbox
+    frame.s3UrlWithBbox
   ].filter(Boolean);
   const chosen = candidates[0] || '';
   return buildHttpsUrlFromS3(chosen);
@@ -101,14 +103,21 @@ export default function DashboardPage({ user, onSignOut }) {
     loadStats();
     loadCurrentSession();
     loadDetections();
+    
     // Refresh stats every 5 seconds
-    const interval = setInterval(() => {
+    const statsInterval = setInterval(() => {
       loadStats();
       loadCurrentSession();
     }, 5000);
-    // Don't auto-refresh detections - let user control frame selection
+    
+    // Auto-refresh detections every 3 seconds to show new frames immediately
+    const detectionsInterval = setInterval(() => {
+      loadDetections(false);
+    }, 3000);
+    
     return () => {
-      clearInterval(interval);
+      clearInterval(statsInterval);
+      clearInterval(detectionsInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -416,28 +425,40 @@ export default function DashboardPage({ user, onSignOut }) {
           console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
           
           if (bbox && bbox.length >= 4) {
-            const [x1, y1, x2, y2] = bbox;
+            let [x1, y1, x2, y2] = bbox;
+            
+            // Ensure valid coordinates (x2 > x1, y2 > y1)
+            if (x2 <= x1) [x1, x2] = [x2, x1];
+            if (y2 <= y1) [y1, y2] = [y2, y1];
+            
             const width = x2 - x1;
             const height = y2 - y1;
             
-            console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
-            
-            // Draw rectangle
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x1, y1, width, height);
-            
-            // Draw label background
-            ctx.fillStyle = '#ff0000';
-            ctx.font = 'bold 14px Arial';
-            const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
-            const textMetrics = ctx.measureText(label);
-            const labelPadding = 10;
-            ctx.fillRect(x1, Math.max(0, y1 - 25), textMetrics.width + labelPadding, 25);
-            
-            // Draw label text
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(label, x1 + 5, Math.max(20, y1 - 8));
+            // Only draw if bbox has valid dimensions
+            if (width > 0 && height > 0) {
+              console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
+              
+              // Draw rectangle
+              ctx.strokeStyle = '#ff0000';
+              ctx.lineWidth = 3;
+              ctx.strokeRect(x1, y1, width, height);
+              
+              // Draw label background
+              ctx.fillStyle = '#ff0000';
+              ctx.font = 'bold 14px Arial';
+              const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
+              const textMetrics = ctx.measureText(label);
+              const labelPadding = 10;
+              const labelX = x1;
+              const labelY = Math.max(20, y1 - 25);
+              ctx.fillRect(labelX, labelY, textMetrics.width + labelPadding, 25);
+              
+              // Draw label text
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(label, labelX + 5, labelY + 17);
+            } else {
+              console.log(`  Skipping detection ${idx}: invalid dimensions (${width.toFixed(0)}x${height.toFixed(0)})`);
+            }
           } else {
             console.log(`  Skipping detection ${idx}: invalid bbox`);
           }
@@ -471,23 +492,35 @@ export default function DashboardPage({ user, onSignOut }) {
               const bbox = resolveBboxPixels(detection, fallbackImg.width, fallbackImg.height);
               console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
               if (bbox && bbox.length >= 4) {
-                const [x1, y1, x2, y2] = bbox;
+                let [x1, y1, x2, y2] = bbox;
+                
+                // Ensure valid coordinates (x2 > x1, y2 > y1)
+                if (x2 <= x1) [x1, x2] = [x2, x1];
+                if (y2 <= y1) [y1, y2] = [y2, y1];
+                
                 const width = x2 - x1;
                 const height = y2 - y1;
                 
-                console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
-                
-                ctx.strokeStyle = '#ff0000';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x1, y1, width, height);
-                ctx.fillStyle = '#ff0000';
-                ctx.font = 'bold 14px Arial';
-                const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
-                const textMetrics = ctx.measureText(label);
-                const labelPadding = 10;
-                ctx.fillRect(x1, Math.max(0, y1 - 25), textMetrics.width + labelPadding, 25);
-                ctx.fillStyle = '#ffffff';
-                ctx.fillText(label, x1 + 5, Math.max(20, y1 - 8));
+                // Only draw if bbox has valid dimensions
+                if (width > 0 && height > 0) {
+                  console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
+                  
+                  ctx.strokeStyle = '#ff0000';
+                  ctx.lineWidth = 3;
+                  ctx.strokeRect(x1, y1, width, height);
+                  ctx.fillStyle = '#ff0000';
+                  ctx.font = 'bold 14px Arial';
+                  const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
+                  const textMetrics = ctx.measureText(label);
+                  const labelPadding = 10;
+                  const labelX = x1;
+                  const labelY = Math.max(20, y1 - 25);
+                  ctx.fillRect(labelX, labelY, textMetrics.width + labelPadding, 25);
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillText(label, labelX + 5, labelY + 17);
+                } else {
+                  console.log(`  Skipping detection ${idx}: invalid dimensions (${width.toFixed(0)}x${height.toFixed(0)})`);
+                }
               }
             });
           }

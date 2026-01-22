@@ -994,7 +994,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     </>
                   ) : (
                     <>
-                      {/* Frame Image - for auto-labeled frames, show original with-bbox image */}
+                      {/* Frame Image - for auto-labeled frames, show original without-bbox image and draw red bbox on top */}
                       <div style={{
                         backgroundColor: '#0f172a',
                         borderRadius: '8px',
@@ -1002,14 +1002,13 @@ export default function HistoryPage({ user, onSignOut }) {
                         marginBottom: '15px',
                         textAlign: 'center'
                       }}>
-                        <img 
-                          src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
-                          alt={`Frame ${currentFrameIndex + 1}`}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: '400px',
-                            borderRadius: '4px'
-                          }}
+                        <BboxAnnotator 
+                          imageUrl={sessionFrames[currentFrameIndex].s3UrlWithoutBbox}
+                          detections={sessionFrames[currentFrameIndex].detections || []}
+                          onSave={() => {}}
+                          onCancel={() => {}}
+                          saving={false}
+                          readOnly={true}
                         />
                       </div>
                     </>
