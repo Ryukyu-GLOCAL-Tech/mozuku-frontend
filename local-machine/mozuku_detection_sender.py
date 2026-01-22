@@ -560,7 +560,7 @@ if ROS2_AVAILABLE:
                 self.get_logger().debug(f"⏳ Already sending, skipping...")
                 return
             
-            if sending_enabled and self.last_annotated_frame is not None and len(self.detections_buffer) > 0:
+            if sending_enabled and len(self.detections_buffer) > 0:
                 # Group detections by frame timestamp (detections from same frame should be sent together)
                 # Use 0.1 second window to group detections from same frame
                 if len(self.detections_buffer) > 0:
@@ -577,6 +577,17 @@ if ROS2_AVAILABLE:
                             frame_detections.append(detection)
                         else:
                             remaining_detections.append(detection)
+                    
+                    # Check if all detections have synchronized frames
+                    # Only send if frames are available (don't wait for last_annotated_frame)
+                    first_detection = frame_detections[0]
+                    frame_with_bbox = first_detection.get('frame_with_bbox')
+                    frame_raw = first_detection.get('frame_raw')
+                    
+                    # Skip sending if frames aren't synchronized yet
+                    if frame_with_bbox is None or frame_raw is None:
+                        self.get_logger().debug(f"⏳ Waiting for synchronized frames... (buffer: {len(frame_detections)} detections)")
+                        return
                     
                     # Update buffer to only keep detections not being sent
                     self.detections_buffer = remaining_detections
@@ -595,19 +606,6 @@ if ROS2_AVAILABLE:
                             frame_with_bbox = first_detection.get('frame_with_bbox')
                             frame_raw = first_detection.get('frame_raw')
                             
-                            # Fallback to last known frames if synchronized frames not available
-                            if frame_with_bbox is None:
-                                self.get_logger().warn("⚠️ No synchronized frame_with_bbox, using last_annotated_frame")
-                                frame_with_bbox = self.last_annotated_frame.copy()
-                            if frame_raw is None:
-                                self.get_logger().warn("⚠️ No synchronized frame_raw, using last_frame")
-                                frame_raw = self.last_frame.copy() if self.last_frame is not None else None
-                            
-                            # Validate we have both frames
-                            if frame_with_bbox is None or frame_raw is None:
-                                self.get_logger().error("❌ Missing synchronized frames, skipping upload")
-                                return
-                            
                             self.sender.send_detection(
                                 frame_with_bbox, 
                                 frame_raw, 
@@ -618,6 +616,12 @@ if ROS2_AVAILABLE:
                             self.get_logger().error(f"❌ Error in send_detection: {str(e)}")
                             import traceback
                             self.get_logger().error(f"   Traceback: {traceback.format_exc()}")
+                        finally:
+                            self.is_sending = False
+                    
+                    thread = threading.Thread(target=send_with_cleanup)
+                    thread.daemon = True
+                    thread.start()
                         finally:
                             # Always mark as done, even if error
                             self.is_sending = False
