@@ -212,7 +212,98 @@ class DetectionSender:
             print(f"   Traceback: {traceback.format_exc()}")
             return None
 
-    def upload_labels_to_s3(self, detections, bucket, key):
+    def extract_bboxes_from_image(self, frame_with_bbox):
+        """
+        Extract bounding box coordinates from yolov8-drawn frame image
+        Detects blue/green rectangles drawn by yolov8
+        
+        Returns:
+            List of bbox coordinates in pixel format: [(x1,y1,x2,y2), ...]
+        """
+        try:
+            import numpy as np
+            
+            # Convert BGR to HSV for better color detection
+            hsv = cv2.cvtColor(frame_with_bbox, cv2.COLOR_BGR2HSV)
+            
+            # Define range for blue color (yolov8 typically uses blue)
+            # Lower bound (hue, sat, val), Upper bound
+            lower_blue = np.array([100, 100, 100])
+            upper_blue = np.array([130, 255, 255])
+            
+            # Create mask for blue pixels
+            mask = cv2.inRange(hsv, lower_blue, upper_blue)
+            
+            # Find contours
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            bboxes = []
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                # Filter out small noise
+                if w > 10 and h > 10:
+                    x2 = x + w
+                    y2 = y + h
+                    bboxes.append((x, y, x2, y2))
+                    print(f"   🎯 Extracted bbox: ({x}, {y}, {x2}, {y2})")
+            
+            return bboxes
+        except Exception as e:
+            print(f"   ⚠️ Error extracting bboxes from image: {str(e)}")
+            return []
+
+    def upload_pixel_coordinates_to_s3(self, bboxes, frame_width, frame_height, bucket, key):
+        """
+        Upload extracted bbox coordinates as txt file to S3
+        Format: Each line = "x1 y1 x2 y2" (pixel coordinates)
+        
+        Args:
+            bboxes: List of bbox tuples [(x1,y1,x2,y2), ...]
+            frame_width: Frame width in pixels
+            frame_height: Frame height in pixels
+            bucket: S3 bucket
+            key: S3 key path
+        
+        Returns:
+            S3 URL if successful
+        """
+        try:
+            lines = []
+            for bbox in bboxes:
+                x1, y1, x2, y2 = bbox
+                # Store as: x1 y1 x2 y2 (pixel coordinates, not normalized)
+                line = f"{int(x1)} {int(y1)} {int(x2)} {int(y2)}"
+                lines.append(line)
+            
+            if not lines:
+                print(f"   ℹ️ No bboxes to save")
+                return None
+            
+            content = '\n'.join(lines)
+            print(f"   📝 Uploading {len(bboxes)} bbox coordinates to S3")
+            
+            response = s3_client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=content.encode('utf-8'),
+                ContentType='text/plain',
+                Metadata={
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'bbox_count': str(len(bboxes)),
+                    'format': 'pixel_coordinates',
+                    'frame_width': str(frame_width),
+                    'frame_height': str(frame_height)
+                }
+            )
+            print(f"   ✅ Coordinates uploaded: {response.get('ResponseMetadata', {}).get('HTTPStatusCode')}")
+            
+            s3_url = f"s3://{bucket}/{key}"
+            return s3_url
+        except Exception as e:
+            print(f"   ❌ Upload Error: {type(e).__name__}: {str(e)}")
+            return None
+
+
         """
         Upload YOLO format labels .txt file to S3
         
@@ -428,13 +519,20 @@ class DetectionSender:
             # This ensures cropped images don't have bounding boxes on them
             cropped_images = self.extract_and_upload_cropped_images(frame_raw, detections, timestamp)
 
-            # Normalize detections for YOLO label generation
+            # Extract bbox coordinates directly from yolov8-drawn frame
+            print(f"\n   🔍 Extracting bbox coordinates from yolov8-drawn frame...")
             frame_h, frame_w = frame_raw.shape[:2]
-            normalized_detections = self.normalize_detections(detections, frame_w, frame_h)
+            extracted_bboxes = self.extract_bboxes_from_image(frame_to_use)
             
-            # Generate and upload YOLO labels .txt file
-            labels_key = f"{self.user_id}/{timestamp}/frame-no-bbox.txt"
-            labels_url = self.upload_labels_to_s3(normalized_detections, FRAMES_WITHOUT_BBOX_BUCKET, labels_key)
+            # Upload extracted pixel coordinates as txt file
+            coords_key = f"{self.user_id}/{timestamp}/frame-no-bbox.txt"
+            coords_url = self.upload_pixel_coordinates_to_s3(
+                extracted_bboxes,
+                frame_w,
+                frame_h,
+                FRAMES_WITHOUT_BBOX_BUCKET,
+                coords_key
+            )
             
             # Save frame metadata to DynamoDB
             success = self.save_frame_to_dynamodb(
@@ -442,12 +540,12 @@ class DetectionSender:
                 timestamp,
                 frame_with_url,
                 frame_without_url,
-                len(detections),
-                normalized_detections
+                len(extracted_bboxes),  # Use actual extracted bbox count
+                extracted_bboxes  # Store extracted coordinates, not normalized detections
             )
             
             if success:
-                print(f"✅ Frame saved: {frame_id} with {len(cropped_images)} impurities\n")
+                print(f"✅ Frame saved: {frame_id} with {len(extracted_bboxes)} detected impurities\n")
                 return True
             else:
                 return False
@@ -618,14 +716,6 @@ if ROS2_AVAILABLE:
                             self.get_logger().error(f"   Traceback: {traceback.format_exc()}")
                         finally:
                             self.is_sending = False
-                    
-                    thread = threading.Thread(target=send_with_cleanup)
-                    thread.daemon = True
-                    thread.start()
-                        finally:
-                            # Always mark as done, even if error
-                            self.is_sending = False
-                            self.get_logger().debug(f"🔓 Sending flag reset")
                     
                     thread = threading.Thread(target=send_with_cleanup)
                     thread.daemon = True

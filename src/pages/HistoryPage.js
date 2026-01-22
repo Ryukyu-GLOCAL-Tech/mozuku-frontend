@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import BboxAnnotator from '../components/BboxAnnotator';
@@ -39,6 +39,10 @@ export default function HistoryPage({ user, onSignOut }) {
   // Feedback state
   const [feedbackData, setFeedbackData] = useState({});
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  
+  // Canvas refs for drawing bboxes on frames
+  const verifiedCanvasRef = useRef(null);
+  const autoLabeledCanvasRef = useRef(null);
 
   useEffect(() => {
     loadHistory();
@@ -169,6 +173,73 @@ export default function HistoryPage({ user, onSignOut }) {
     setCurrentFrameIndex(index);
     console.log('✅ Refresh complete, current frame index:', index);
   };
+
+  // Draw red bboxes on canvas for History page (same as Dashboard)
+  useEffect(() => {
+    const canvasRef = currentFrameIndex < sessionFrames.length && 
+      sessionFrames[currentFrameIndex].labelingStatus === 'verified' ? 
+      verifiedCanvasRef : autoLabeledCanvasRef;
+    
+    if (!canvasRef || !canvasRef.current || sessionFrames.length === 0) return;
+    
+    const currentFrame = sessionFrames[currentFrameIndex];
+    if (!currentFrame || !currentFrame.s3UrlWithoutBbox) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw the clean frame
+      ctx.drawImage(img, 0, 0);
+      
+      // Draw red bboxes using extracted pixel coordinates
+      if (currentFrame.detections && Array.isArray(currentFrame.detections)) {
+        let bboxCount = 0;
+        
+        currentFrame.detections.forEach((detection) => {
+          try {
+            // Handle array format [x1, y1, x2, y2]
+            let x1, y1, x2, y2;
+            
+            if (Array.isArray(detection)) {
+              [x1, y1, x2, y2] = detection;
+            } else if (typeof detection === 'object' && detection !== null) {
+              x1 = Number(detection.x1 || detection.x || 0);
+              y1 = Number(detection.y1 || detection.y || 0);
+              x2 = Number(detection.x2 || detection.x + detection.w || 0);
+              y2 = Number(detection.y2 || detection.y + detection.h || 0);
+            }
+            
+            if (x1 && y1 && x2 && y2) {
+              // Draw red bbox
+              ctx.strokeStyle = '#ff0000';
+              ctx.lineWidth = 3;
+              ctx.rect(x1, y1, x2 - x1, y2 - y1);
+              ctx.stroke();
+              bboxCount++;
+              
+              console.log(`🎯 Drew red bbox at (${x1}, ${y1}) - (${x2}, ${y2})`);
+            }
+          } catch (e) {
+            console.error('Error drawing bbox:', e, detection);
+          }
+        });
+        
+        console.log(`✅ Drew ${bboxCount} red bboxes on History canvas`);
+      }
+    };
+    
+    img.onerror = () => {
+      console.error('❌ Failed to load image for canvas drawing:', currentFrame.s3UrlWithoutBbox);
+    };
+    
+    img.src = currentFrame.s3UrlWithoutBbox;
+  }, [sessionFrames, currentFrameIndex]);
 
   const handleNextFrame = () => {
     if (currentFrameIndex < sessionFrames.length - 1) {
@@ -971,7 +1042,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     />
                   ) : sessionFrames[currentFrameIndex].labelingStatus === 'verified' ? (
                     <>
-                      {/* For verified frames, show frame with yolov8 bboxes */}
+                      {/* For verified frames, show frame with red bboxes */}
                       <div style={{
                         backgroundColor: '#0f172a',
                         borderRadius: '8px',
@@ -979,8 +1050,8 @@ export default function HistoryPage({ user, onSignOut }) {
                         marginBottom: '15px',
                         textAlign: 'center'
                       }}>
-                        <img 
-                          src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
+                        <canvas 
+                          ref={verifiedCanvasRef}
                           alt={`Verified Frame ${currentFrameIndex + 1}`}
                           style={{
                             maxWidth: '100%',
@@ -992,7 +1063,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     </>
                   ) : (
                     <>
-                      {/* For auto-labeled frames, show frame with yolov8 bboxes */}
+                      {/* For auto-labeled frames, show frame with red bboxes */}
                       <div style={{
                         backgroundColor: '#0f172a',
                         borderRadius: '8px',
@@ -1000,8 +1071,8 @@ export default function HistoryPage({ user, onSignOut }) {
                         marginBottom: '15px',
                         textAlign: 'center'
                       }}>
-                        <img 
-                          src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
+                        <canvas 
+                          ref={autoLabeledCanvasRef}
                           alt={`Frame ${currentFrameIndex + 1}`}
                           style={{
                             maxWidth: '100%',

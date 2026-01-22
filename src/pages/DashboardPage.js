@@ -97,7 +97,7 @@ export default function DashboardPage({ user, onSignOut }) {
     }
   }, [selectedDetection]);
 
-  // Draw detection bboxes on canvas
+  // Draw detection bboxes on canvas from extracted coordinates
   useEffect(() => {
     if (!canvasRef.current || !selectedDetection || !selectedImageUrl) return;
     
@@ -113,25 +113,51 @@ export default function DashboardPage({ user, onSignOut }) {
       // Draw the clean frame
       ctx.drawImage(img, 0, 0);
       
-      // Draw red bboxes for each detection
-      if (selectedDetection.detections && selectedDetection.detections.length > 0) {
+      // Draw red bboxes using extracted pixel coordinates
+      // detections array contains tuples: (x1, y1, x2, y2) in pixel format
+      if (selectedDetection.detections && Array.isArray(selectedDetection.detections)) {
+        let bboxCount = 0;
+        
         selectedDetection.detections.forEach((detection) => {
-          if (detection && detection.x !== undefined && detection.y !== undefined && detection.w !== undefined && detection.h !== undefined) {
-            // Convert normalized YOLO format (0-1) to pixel coordinates
-            const x1 = detection.x * canvas.width;
-            const y1 = detection.y * canvas.height;
-            const x2 = (detection.x + detection.w) * canvas.width;
-            const y2 = (detection.y + detection.h) * canvas.height;
+          try {
+            // Handle both array format [x1, y1, x2, y2] and object format {x1, y1, x2, y2}
+            let x1, y1, x2, y2;
             
-            // Draw red bbox
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 3;
-            ctx.rect(x1, y1, x2 - x1, y2 - y1);
-            ctx.stroke();
+            if (Array.isArray(detection)) {
+              // Array format from API
+              [x1, y1, x2, y2] = detection;
+            } else if (typeof detection === 'object' && detection !== null) {
+              // Try object format
+              if (detection.M !== undefined) {
+                // DynamoDB Decimal format stored as object
+                x1 = Number(detection.x1 || detection.x || 0);
+                y1 = Number(detection.y1 || detection.y || 0);
+                x2 = Number(detection.x2 || detection.x + detection.w || 0);
+                y2 = Number(detection.y2 || detection.y + detection.h || 0);
+              } else {
+                x1 = Number(detection.x1 || detection.x || 0);
+                y1 = Number(detection.y1 || detection.y || 0);
+                x2 = Number(detection.x2 || detection.x + detection.w || 0);
+                y2 = Number(detection.y2 || detection.y + detection.h || 0);
+              }
+            }
             
-            console.log(`🎯 Drew red bbox at (${x1}, ${y1}) - (${x2}, ${y2})`);
+            if (x1 && y1 && x2 && y2) {
+              // Draw red bbox
+              ctx.strokeStyle = '#ff0000';
+              ctx.lineWidth = 3;
+              ctx.rect(x1, y1, x2 - x1, y2 - y1);
+              ctx.stroke();
+              bboxCount++;
+              
+              console.log(`🎯 Drew red bbox at (${x1}, ${y1}) - (${x2}, ${y2})`);
+            }
+          } catch (e) {
+            console.error('Error drawing bbox:', e, detection);
           }
         });
+        
+        console.log(`✅ Drew ${bboxCount} red bboxes on canvas`);
       }
     };
     
