@@ -212,46 +212,6 @@ class DetectionSender:
             print(f"   Traceback: {traceback.format_exc()}")
             return None
 
-    def extract_bboxes_from_image(self, frame_with_bbox):
-        """
-        Extract bounding box coordinates from yolov8-drawn frame image
-        Detects blue/green rectangles drawn by yolov8
-        
-        Returns:
-            List of bbox coordinates in pixel format: [(x1,y1,x2,y2), ...]
-        """
-        try:
-            import numpy as np
-            
-            # Convert BGR to HSV for better color detection
-            hsv = cv2.cvtColor(frame_with_bbox, cv2.COLOR_BGR2HSV)
-            
-            # Define range for blue color (yolov8 typically uses blue)
-            # Lower bound (hue, sat, val), Upper bound
-            lower_blue = np.array([100, 100, 100])
-            upper_blue = np.array([130, 255, 255])
-            
-            # Create mask for blue pixels
-            mask = cv2.inRange(hsv, lower_blue, upper_blue)
-            
-            # Find contours
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            
-            bboxes = []
-            for contour in contours:
-                x, y, w, h = cv2.boundingRect(contour)
-                # Filter out small noise
-                if w > 10 and h > 10:
-                    x2 = x + w
-                    y2 = y + h
-                    bboxes.append((x, y, x2, y2))
-                    print(f"   🎯 Extracted bbox: ({x}, {y}, {x2}, {y2})")
-            
-            return bboxes
-        except Exception as e:
-            print(f"   ⚠️ Error extracting bboxes from image: {str(e)}")
-            return []
-
     def upload_pixel_coordinates_to_s3(self, bboxes, frame_width, frame_height, bucket, key):
         """
         Upload extracted bbox coordinates as txt file to S3
@@ -301,59 +261,6 @@ class DetectionSender:
             return s3_url
         except Exception as e:
             print(f"   ❌ Upload Error: {type(e).__name__}: {str(e)}")
-            return None
-
-
-        """
-        Upload YOLO format labels .txt file to S3
-        
-        Args:
-            detections: List of normalized detections in YOLO format
-            bucket: S3 bucket name
-            key: S3 key (path)
-        
-        Returns:
-            S3 URL if successful, None otherwise
-        """
-        try:
-            # Generate YOLO labels content (one line per detection)
-            # Format: class x_center y_center width height
-            lines = []
-            for det in detections:
-                class_id = int(det.get('class', 0))
-                x = float(det.get('x', 0))
-                y = float(det.get('y', 0))
-                w = float(det.get('w', 0))
-                h = float(det.get('h', 0))
-                
-                # YOLO format: class x_center y_center width height
-                line = f"{class_id} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
-                lines.append(line)
-            
-            labels_content = '\n'.join(lines)
-            
-            print(f"   📝 Uploading YOLO labels to S3: {len(detections)} detections")
-            
-            # Upload to S3
-            response = s3_client.put_object(
-                Bucket=bucket,
-                Key=key,
-                Body=labels_content.encode('utf-8'),
-                ContentType='text/plain',
-                Metadata={
-                    'timestamp': datetime.utcnow().isoformat(),
-                    'detection_count': str(len(detections)),
-                    'format': 'yolo'
-                }
-            )
-            print(f"   ✅ Labels uploaded: {response.get('ResponseMetadata', {}).get('HTTPStatusCode')}")
-            
-            s3_url = f"s3://{bucket}/{key}"
-            return s3_url
-        except Exception as e:
-            print(f"   ❌ Labels Upload Error: {type(e).__name__}: {str(e)}")
-            import traceback
-            print(f"   Traceback: {traceback.format_exc()}")
             return None
 
     def _to_decimal(self, obj):
@@ -519,15 +426,22 @@ class DetectionSender:
             # This ensures cropped images don't have bounding boxes on them
             cropped_images = self.extract_and_upload_cropped_images(frame_raw, detections, timestamp)
 
-            # Extract bbox coordinates directly from yolov8-drawn frame
-            print(f"\n   🔍 Extracting bbox coordinates from yolov8-drawn frame...")
+            # Convert yolov8 detection bboxes to pixel coordinates
             frame_h, frame_w = frame_raw.shape[:2]
-            extracted_bboxes = self.extract_bboxes_from_image(frame_to_use)
-            
-            # Upload extracted pixel coordinates as txt file
+            pixel_bboxes = []
+            for det in detections:
+                bbox = det.get('bbox', {})
+                x = int(bbox.get('x', 0))
+                y = int(bbox.get('y', 0))
+                w = int(bbox.get('width', 0))
+                h = int(bbox.get('height', 0))
+                if w > 0 and h > 0:
+                    pixel_bboxes.append((x, y, x + w, y + h))
+
+            # Upload pixel coordinates as txt file (same folder as clean frame)
             coords_key = f"{self.user_id}/{timestamp}/frame-no-bbox.txt"
             coords_url = self.upload_pixel_coordinates_to_s3(
-                extracted_bboxes,
+                pixel_bboxes,
                 frame_w,
                 frame_h,
                 FRAMES_WITHOUT_BBOX_BUCKET,
@@ -540,12 +454,12 @@ class DetectionSender:
                 timestamp,
                 frame_with_url,
                 frame_without_url,
-                len(extracted_bboxes),  # Use actual extracted bbox count
-                extracted_bboxes  # Store extracted coordinates, not normalized detections
+                len(pixel_bboxes),
+                pixel_bboxes
             )
             
             if success:
-                print(f"✅ Frame saved: {frame_id} with {len(extracted_bboxes)} detected impurities\n")
+                print(f"✅ Frame saved: {frame_id} with {len(pixel_bboxes)} detected impurities\n")
                 return True
             else:
                 return False
@@ -586,6 +500,16 @@ if ROS2_AVAILABLE:
             # Timer to send every 2 seconds
             self.send_timer = self.create_timer(self.send_interval, self.send_buffered)
             
+            # Log available topics on startup
+            import subprocess
+            try:
+                self.get_logger().info("📡 Available ROS2 topics:")
+                result = subprocess.run(['ros2', 'topic', 'list'], capture_output=True, text=True, timeout=5)
+                for line in result.stdout.strip().split('\n'):
+                    self.get_logger().info(f"   {line}")
+            except Exception as e:
+                self.get_logger().warn(f"⚠️ Could not list topics: {str(e)}")
+            
             self.get_logger().info(f"✅ Listening to {CAMERA_TOPIC}, /yolov8/detections_image, and {DETECTIONS_TOPIC}")
         
         def camera_callback(self, msg):
@@ -598,9 +522,16 @@ if ROS2_AVAILABLE:
         def annotated_image_callback(self, msg):
             """Capture annotated image from yolov8_node (already has correct bboxes)"""
             try:
-                self.last_annotated_frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+                annotated = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+                if annotated is not None:
+                    self.last_annotated_frame = annotated
+                    self.get_logger().info(f"✅ Captured annotated frame: {annotated.shape}")
+                else:
+                    self.get_logger().warn("⚠️ Annotated frame conversion returned None")
             except Exception as e:
-                self.get_logger().error(f"Annotated image conversion error: {str(e)}")
+                self.get_logger().error(f"❌ Annotated image conversion error: {str(e)}")
+                import traceback
+                self.get_logger().error(traceback.format_exc())
         
         def detection_callback(self, msg):
             """Buffer detection data from yolov8_node"""
@@ -633,17 +564,21 @@ if ROS2_AVAILABLE:
                 # Store frame timestamp with detection to group by frame later
                 frame_timestamp = time.time()
                 
+                # Ensure we have the annotated frame
+                if self.last_annotated_frame is None:
+                    self.get_logger().warn(f"⚠️ WARNING: No annotated frame captured yet! Using raw frame instead.")
+                
                 detection = {
                     'label': label,
                     'confidence': confidence,
                     'bbox': bbox_data,
-                    'frame_with_bbox': self.last_annotated_frame.copy() if self.last_annotated_frame is not None else None,
-                    'frame_raw': self.last_frame.copy() if self.last_frame is not None else None,  # Store raw frame synchronized with detection
+                    'frame_with_bbox': self.last_annotated_frame.copy() if self.last_annotated_frame is not None else self.last_frame.copy() if self.last_frame is not None else None,
+                    'frame_raw': self.last_frame.copy() if self.last_frame is not None else None,
                     'frame_timestamp': frame_timestamp
                 }
                 
                 self.detections_buffer.append(detection)
-                self.get_logger().info(f"🎯 Buffered: {label} ({confidence:.1%}) bbox=({x1},{y1},{int(width)}x{int(height)})")
+                self.get_logger().info(f"🎯 Buffered: {label} ({confidence:.1%}) bbox=({x1},{y1},{int(width)}x{int(height)}) | frame_with_bbox={'✅' if detection['frame_with_bbox'] is not None else '❌'}")
             except Exception as e:
                 self.get_logger().error(f"Detection processing error: {str(e)}")
                 import traceback

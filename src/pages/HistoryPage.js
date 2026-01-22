@@ -3,6 +3,38 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import BboxAnnotator from '../components/BboxAnnotator';
 
+const buildHttpsUrlFromS3 = (s3Url) => {
+  if (!s3Url || typeof s3Url !== 'string' || !s3Url.startsWith('s3://')) return s3Url;
+  const parts = s3Url.replace('s3://', '').split('/', 2);
+  const bucket = parts[0];
+  const key = parts[1] || '';
+  const region = process.env.REACT_APP_COGNITO_REGION || 'ap-northeast-1';
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+};
+
+const getFrameLabelsUrl = (frame) => {
+  if (!frame) return '';
+  if (frame.s3LabelsPath) return buildHttpsUrlFromS3(frame.s3LabelsPath);
+
+  const source = frame.s3UrlWithoutBbox || frame.fullImageUrlWithoutBbox || frame.fullImageUrl || '';
+  if (!source) return '';
+
+  const https = buildHttpsUrlFromS3(source);
+  const base = https.split('?')[0];
+  return base.replace(/\.(jpg|jpeg|png)$/i, '.txt');
+};
+
+const parseBboxText = (text) => {
+  if (!text) return [];
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(/\s+/).map(Number))
+    .filter((arr) => arr.length >= 4 && arr.every((n) => Number.isFinite(n)))
+    .map(([x1, y1, x2, y2]) => [x1, y1, x2, y2]);
+};
+
 export default function HistoryPage({ user, onSignOut }) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState([]);
@@ -43,6 +75,7 @@ export default function HistoryPage({ user, onSignOut }) {
   // Canvas refs for drawing bboxes on frames
   const verifiedCanvasRef = useRef(null);
   const autoLabeledCanvasRef = useRef(null);
+  const [currentFrameBboxes, setCurrentFrameBboxes] = useState([]);
 
   useEffect(() => {
     loadHistory();
@@ -174,6 +207,33 @@ export default function HistoryPage({ user, onSignOut }) {
     console.log('✅ Refresh complete, current frame index:', index);
   };
 
+  useEffect(() => {
+    let isActive = true;
+    if (!sessionFrames.length) return () => { isActive = false; };
+    const currentFrame = sessionFrames[currentFrameIndex];
+    if (!currentFrame) return () => { isActive = false; };
+
+    const labelsUrl = getFrameLabelsUrl(currentFrame);
+    if (!labelsUrl) {
+      setCurrentFrameBboxes([]);
+      return () => { isActive = false; };
+    }
+
+    fetch(labelsUrl)
+      .then((res) => res.text())
+      .then((text) => {
+        if (!isActive) return;
+        const parsed = parseBboxText(text);
+        setCurrentFrameBboxes(parsed);
+      })
+      .catch((err) => {
+        console.error('❌ Failed to load bbox labels:', err);
+        if (isActive) setCurrentFrameBboxes([]);
+      });
+
+    return () => { isActive = false; };
+  }, [sessionFrames, currentFrameIndex]);
+
   // Draw red bboxes on canvas for History page (same as Dashboard)
   useEffect(() => {
     const canvasRef = currentFrameIndex < sessionFrames.length && 
@@ -197,37 +257,15 @@ export default function HistoryPage({ user, onSignOut }) {
       // Draw the clean frame
       ctx.drawImage(img, 0, 0);
       
-      // Draw red bboxes using extracted pixel coordinates
-      if (currentFrame.detections && Array.isArray(currentFrame.detections)) {
+      // Draw red bboxes using coordinates from txt file
+      if (currentFrameBboxes.length > 0) {
         let bboxCount = 0;
-        
-        currentFrame.detections.forEach((detection) => {
-          try {
-            // Handle array format [x1, y1, x2, y2]
-            let x1, y1, x2, y2;
-            
-            if (Array.isArray(detection)) {
-              [x1, y1, x2, y2] = detection;
-            } else if (typeof detection === 'object' && detection !== null) {
-              x1 = Number(detection.x1 || detection.x || 0);
-              y1 = Number(detection.y1 || detection.y || 0);
-              x2 = Number(detection.x2 || detection.x + detection.w || 0);
-              y2 = Number(detection.y2 || detection.y + detection.h || 0);
-            }
-            
-            if (x1 && y1 && x2 && y2) {
-              // Draw red bbox
-              ctx.strokeStyle = '#ff0000';
-              ctx.lineWidth = 3;
-              ctx.rect(x1, y1, x2 - x1, y2 - y1);
-              ctx.stroke();
-              bboxCount++;
-              
-              console.log(`🎯 Drew red bbox at (${x1}, ${y1}) - (${x2}, ${y2})`);
-            }
-          } catch (e) {
-            console.error('Error drawing bbox:', e, detection);
-          }
+        currentFrameBboxes.forEach(([x1, y1, x2, y2]) => {
+          ctx.strokeStyle = '#ff0000';
+          ctx.lineWidth = 3;
+          ctx.rect(x1, y1, x2 - x1, y2 - y1);
+          ctx.stroke();
+          bboxCount++;
         });
         
         console.log(`✅ Drew ${bboxCount} red bboxes on History canvas`);
@@ -239,7 +277,7 @@ export default function HistoryPage({ user, onSignOut }) {
     };
     
     img.src = currentFrame.s3UrlWithoutBbox;
-  }, [sessionFrames, currentFrameIndex]);
+  }, [sessionFrames, currentFrameIndex, currentFrameBboxes]);
 
   const handleNextFrame = () => {
     if (currentFrameIndex < sessionFrames.length - 1) {

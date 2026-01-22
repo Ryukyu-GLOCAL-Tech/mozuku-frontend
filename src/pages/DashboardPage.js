@@ -11,6 +11,29 @@ const buildHttpsUrlFromS3 = (s3Url) => {
   return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
 };
 
+const getFrameLabelsUrl = (frame) => {
+  if (!frame) return '';
+  if (frame.s3LabelsPath) return buildHttpsUrlFromS3(frame.s3LabelsPath);
+
+  const source = frame.s3UrlWithoutBbox || frame.fullImageUrlWithoutBbox || frame.fullImageUrl || '';
+  if (!source) return '';
+
+  const https = buildHttpsUrlFromS3(source);
+  const base = https.split('?')[0];
+  return base.replace(/\.(jpg|jpeg|png)$/i, '.txt');
+};
+
+const parseBboxText = (text) => {
+  if (!text) return [];
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(/\s+/).map(Number))
+    .filter((arr) => arr.length >= 4 && arr.every((n) => Number.isFinite(n)))
+    .map(([x1, y1, x2, y2]) => [x1, y1, x2, y2]);
+};
+
 const getFrameImageUrl = (frame) => {
   if (!frame) return '';
   
@@ -58,6 +81,7 @@ export default function DashboardPage({ user, onSignOut }) {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
+  const [selectedBboxes, setSelectedBboxes] = useState([]);
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -86,15 +110,30 @@ export default function DashboardPage({ user, onSignOut }) {
 
   // Update image URL when selectedDetection changes
   useEffect(() => {
+    let isActive = true;
     if (selectedDetection) {
       const imageUrl = getFrameImageUrl(selectedDetection);
       setSelectedImageUrl(imageUrl);
-      
-      // Draw red bboxes on canvas after image loads
-      if (canvasRef.current && selectedDetection.detections && selectedDetection.detections.length > 0) {
-        console.log('📍 Will draw bboxes on canvas:', selectedDetection.detections);
+
+      const labelsUrl = getFrameLabelsUrl(selectedDetection);
+      if (!labelsUrl) {
+        setSelectedBboxes([]);
+        return () => { isActive = false; };
       }
+
+      fetch(labelsUrl)
+        .then((res) => res.text())
+        .then((text) => {
+          if (!isActive) return;
+          const parsed = parseBboxText(text);
+          setSelectedBboxes(parsed);
+        })
+        .catch((err) => {
+          console.error('❌ Failed to load bbox labels:', err);
+          if (isActive) setSelectedBboxes([]);
+        });
     }
+    return () => { isActive = false; };
   }, [selectedDetection]);
 
   // Draw detection bboxes on canvas from extracted coordinates
@@ -113,48 +152,15 @@ export default function DashboardPage({ user, onSignOut }) {
       // Draw the clean frame
       ctx.drawImage(img, 0, 0);
       
-      // Draw red bboxes using extracted pixel coordinates
-      // detections array contains tuples: (x1, y1, x2, y2) in pixel format
-      if (selectedDetection.detections && Array.isArray(selectedDetection.detections)) {
+      // Draw red bboxes using coordinates from txt file
+      if (selectedBboxes.length > 0) {
         let bboxCount = 0;
-        
-        selectedDetection.detections.forEach((detection) => {
-          try {
-            // Handle both array format [x1, y1, x2, y2] and object format {x1, y1, x2, y2}
-            let x1, y1, x2, y2;
-            
-            if (Array.isArray(detection)) {
-              // Array format from API
-              [x1, y1, x2, y2] = detection;
-            } else if (typeof detection === 'object' && detection !== null) {
-              // Try object format
-              if (detection.M !== undefined) {
-                // DynamoDB Decimal format stored as object
-                x1 = Number(detection.x1 || detection.x || 0);
-                y1 = Number(detection.y1 || detection.y || 0);
-                x2 = Number(detection.x2 || detection.x + detection.w || 0);
-                y2 = Number(detection.y2 || detection.y + detection.h || 0);
-              } else {
-                x1 = Number(detection.x1 || detection.x || 0);
-                y1 = Number(detection.y1 || detection.y || 0);
-                x2 = Number(detection.x2 || detection.x + detection.w || 0);
-                y2 = Number(detection.y2 || detection.y + detection.h || 0);
-              }
-            }
-            
-            if (x1 && y1 && x2 && y2) {
-              // Draw red bbox
-              ctx.strokeStyle = '#ff0000';
-              ctx.lineWidth = 3;
-              ctx.rect(x1, y1, x2 - x1, y2 - y1);
-              ctx.stroke();
-              bboxCount++;
-              
-              console.log(`🎯 Drew red bbox at (${x1}, ${y1}) - (${x2}, ${y2})`);
-            }
-          } catch (e) {
-            console.error('Error drawing bbox:', e, detection);
-          }
+        selectedBboxes.forEach(([x1, y1, x2, y2]) => {
+          ctx.strokeStyle = '#ff0000';
+          ctx.lineWidth = 3;
+          ctx.rect(x1, y1, x2 - x1, y2 - y1);
+          ctx.stroke();
+          bboxCount++;
         });
         
         console.log(`✅ Drew ${bboxCount} red bboxes on canvas`);
@@ -166,7 +172,7 @@ export default function DashboardPage({ user, onSignOut }) {
     };
     
     img.src = selectedImageUrl;
-  }, [selectedImageUrl, selectedDetection]);
+  }, [selectedImageUrl, selectedBboxes]);
 
 
   const getAuthToken = () => {
