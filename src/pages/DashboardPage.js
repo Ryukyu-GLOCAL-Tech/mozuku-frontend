@@ -172,7 +172,7 @@ export default function DashboardPage({ user, onSignOut }) {
     };
     
     img.src = selectedImageUrl;
-  }, [selectedImageUrl, selectedBboxes]);
+  }, [selectedImageUrl, selectedBboxes, selectedDetection]);
 
 
   const getAuthToken = () => {
