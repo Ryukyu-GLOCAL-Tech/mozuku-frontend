@@ -32,57 +32,6 @@ const getFrameImageUrl = (frame) => {
   return buildHttpsUrlFromS3(chosen);
 };
 
-const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
-  if (!detection) return null;
-
-  if (Array.isArray(detection.bbox) && detection.bbox.length >= 4) {
-    console.log('✅ Using detection.bbox array:', detection.bbox);
-    return detection.bbox;
-  }
-
-  const bboxObj = detection.bbox && typeof detection.bbox === 'object' ? detection.bbox : null;
-  if (bboxObj && Number.isFinite(bboxObj.x) && Number.isFinite(bboxObj.y) && Number.isFinite(bboxObj.width) && Number.isFinite(bboxObj.height)) {
-    console.log('✅ Using detection.bbox object - pixel coords:', bboxObj);
-    const x1 = bboxObj.x;
-    const y1 = bboxObj.y;
-    const x2 = bboxObj.x + bboxObj.width;
-    const y2 = bboxObj.y + bboxObj.height;
-    return [x1, y1, x2, y2];
-  }
-
-  const hasNormalized = Number.isFinite(detection.x) && Number.isFinite(detection.y) && Number.isFinite(detection.w) && Number.isFinite(detection.h);
-  if (hasNormalized && imgWidth > 0 && imgHeight > 0) {
-    const xCenter = detection.x;
-    const yCenter = detection.y;
-    const w = detection.w;
-    const h = detection.h;
-
-    const isNormalized = xCenter <= 1 && yCenter <= 1 && w <= 1 && h <= 1;
-    if (isNormalized) {
-      // Convert from YOLO format (center-based, normalized) to pixel coordinates
-      // YOLO: x_center, y_center, width, height (all 0-1 normalized)
-      // Output: x1, y1, x2, y2 (pixel coordinates, top-left and bottom-right corners)
-      const x1 = Math.max(0, (xCenter - w / 2) * imgWidth);
-      const y1 = Math.max(0, (yCenter - h / 2) * imgHeight);
-      const x2 = Math.min(imgWidth, (xCenter + w / 2) * imgWidth);
-      const y2 = Math.min(imgHeight, (yCenter + h / 2) * imgHeight);
-      
-      console.log(`📐 Converting YOLO normalized format to pixels:`, {
-        normalized: { xCenter: xCenter.toFixed(4), yCenter: yCenter.toFixed(4), w: w.toFixed(4), h: h.toFixed(4) },
-        image: `${imgWidth}x${imgHeight}`,
-        pixels: { x1: x1.toFixed(0), y1: y1.toFixed(0), x2: x2.toFixed(0), y2: y2.toFixed(0) }
-      });
-      
-      return [x1, y1, x2, y2];
-    } else {
-      console.log('❌ Values not normalized (> 1):', { xCenter, yCenter, w, h });
-    }
-  }
-
-  console.log('❌ Could not resolve bbox from detection:', detection);
-  return null;
-};
-
 export default function DashboardPage({ user, onSignOut }) {
   const { t } = useTranslation();
   const [stats, setStats] = useState({
