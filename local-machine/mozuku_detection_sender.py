@@ -79,7 +79,7 @@ os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
 # ROS2 Launch Commands (model path will be injected dynamically)
 ROS2_LAUNCH_COMMANDS = {
-    'camera_bringup': 'ros2 launch camera_bringup detection_bringup.launch.py yolo_model:={model_path} confidence_threshold:=0.35 roi_mode:=rect roi_xmin:=0 roi_ymin:=0 roi_xmax:=1279 roi_ymax:=719 mm_per_px_x:=0.3 mm_per_px_y:=0.30 use_fp16:=true save_raw_frames_debug:=false',
+    'camera_bringup': 'ros2 launch camera_bringup detection_bringup.launch.py yolo_model:={model_path} confidence_threshold:=0.25 roi_mode:=rect roi_xmin:=0 roi_ymin:=0 roi_xmax:=1919 roi_ymax:=1079 mm_per_px_x:=0.25 mm_per_px_y:=0.25 use_fp16:=true save_raw_frames_debug:=false',
     'sdm_bridge': 'ros2 launch sdm_bridge_ros2 sdm.launch.py'
 }
 

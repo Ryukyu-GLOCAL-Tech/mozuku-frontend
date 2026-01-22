@@ -49,10 +49,16 @@ const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
 
     const isNormalized = xCenter <= 1 && yCenter <= 1 && w <= 1 && h <= 1;
     if (isNormalized) {
-      const x1 = (xCenter - w / 2) * imgWidth;
-      const y1 = (yCenter - h / 2) * imgHeight;
-      const x2 = (xCenter + w / 2) * imgWidth;
-      const y2 = (yCenter + h / 2) * imgHeight;
+      // Convert from YOLO format (center-based, normalized) to pixel coordinates
+      // YOLO: x_center, y_center, width, height (all 0-1 normalized)
+      // Output: x1, y1, x2, y2 (pixel coordinates, top-left and bottom-right corners)
+      const x1 = Math.max(0, (xCenter - w / 2) * imgWidth);
+      const y1 = Math.max(0, (yCenter - h / 2) * imgHeight);
+      const x2 = Math.min(imgWidth, (xCenter + w / 2) * imgWidth);
+      const y2 = Math.min(imgHeight, (yCenter + h / 2) * imgHeight);
+      
+      console.log(`Converting YOLO format: center=(${xCenter.toFixed(4)}, ${yCenter.toFixed(4)}), size=(${w.toFixed(4)}, ${h.toFixed(4)}) -> pixels: (${x1.toFixed(0)}, ${y1.toFixed(0)}, ${x2.toFixed(0)}, ${y2.toFixed(0)}) on ${imgWidth}x${imgHeight}`);
+      
       return [x1, y1, x2, y2];
     }
   }
@@ -393,12 +399,16 @@ export default function DashboardPage({ user, onSignOut }) {
       canvas.width = img.width;
       canvas.height = img.height;
       
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
       // Draw the image
       ctx.drawImage(img, 0, 0);
       
       // Draw bounding boxes if detections exist
       const detectionsList = selectedDetection.detections || [];
       console.log('Drawing detections:', detectionsList);
+      console.log(`Total detections to draw: ${detectionsList.length}`);
       
       if (detectionsList && detectionsList.length > 0) {
         detectionsList.forEach((detection, idx) => {
@@ -407,22 +417,29 @@ export default function DashboardPage({ user, onSignOut }) {
           
           if (bbox && bbox.length >= 4) {
             const [x1, y1, x2, y2] = bbox;
+            const width = x2 - x1;
+            const height = y2 - y1;
+            
+            console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
             
             // Draw rectangle
             ctx.strokeStyle = '#ff0000';
             ctx.lineWidth = 3;
-            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.strokeRect(x1, y1, width, height);
             
             // Draw label background
             ctx.fillStyle = '#ff0000';
             ctx.font = 'bold 14px Arial';
             const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
             const textMetrics = ctx.measureText(label);
-            ctx.fillRect(x1, y1 - 25, textMetrics.width + 10, 25);
+            const labelPadding = 10;
+            ctx.fillRect(x1, Math.max(0, y1 - 25), textMetrics.width + labelPadding, 25);
             
             // Draw label text
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(label, x1 + 5, y1 - 8);
+            ctx.fillText(label, x1 + 5, Math.max(20, y1 - 8));
+          } else {
+            console.log(`  Skipping detection ${idx}: invalid bbox`);
           }
         });
       } else {
@@ -440,25 +457,37 @@ export default function DashboardPage({ user, onSignOut }) {
           console.log('Image loaded without CORS:', { width: fallbackImg.width, height: fallbackImg.height });
           canvas.width = fallbackImg.width;
           canvas.height = fallbackImg.height;
+          
+          // Clear canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
           ctx.drawImage(fallbackImg, 0, 0);
 
           const detectionsList = selectedDetection.detections || [];
+          console.log(`Drawing ${detectionsList.length} detections on fallback image`);
+          
           if (detectionsList && detectionsList.length > 0) {
             detectionsList.forEach((detection, idx) => {
               const bbox = resolveBboxPixels(detection, fallbackImg.width, fallbackImg.height);
               console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
               if (bbox && bbox.length >= 4) {
                 const [x1, y1, x2, y2] = bbox;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                
+                console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
+                
                 ctx.strokeStyle = '#ff0000';
                 ctx.lineWidth = 3;
-                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                ctx.strokeRect(x1, y1, width, height);
                 ctx.fillStyle = '#ff0000';
                 ctx.font = 'bold 14px Arial';
                 const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
                 const textMetrics = ctx.measureText(label);
-                ctx.fillRect(x1, y1 - 25, textMetrics.width + 10, 25);
+                const labelPadding = 10;
+                ctx.fillRect(x1, Math.max(0, y1 - 25), textMetrics.width + labelPadding, 25);
                 ctx.fillStyle = '#ffffff';
-                ctx.fillText(label, x1 + 5, y1 - 8);
+                ctx.fillText(label, x1 + 5, Math.max(20, y1 - 8));
               }
             });
           }
