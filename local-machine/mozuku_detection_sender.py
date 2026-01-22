@@ -442,6 +442,7 @@ class DetectionSender:
     def send_detection(self, frame_with_bbox, frame_raw, detections):
         """Upload annotated frame (with bboxes from yolov8_node) and raw frame to S3"""
         if not detections or len(detections) == 0:
+            print("⚠️ No detections - skipping S3 upload")
             return False
         
         try:
