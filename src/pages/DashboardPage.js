@@ -60,6 +60,7 @@ export default function DashboardPage({ user, onSignOut }) {
   const [totalFrames, setTotalFrames] = useState(0);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
+  const [selectedImageUrl, setSelectedImageUrl] = useState('');
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -85,6 +86,14 @@ export default function DashboardPage({ user, onSignOut }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Update image URL when selectedDetection changes
+  useEffect(() => {
+    if (selectedDetection) {
+      const imageUrl = getFrameImageUrl(selectedDetection);
+      setSelectedImageUrl(imageUrl);
+    }
+  }, [selectedDetection]);
 
 
   const getAuthToken = () => {
@@ -350,11 +359,6 @@ export default function DashboardPage({ user, onSignOut }) {
   // Draw bounding boxes on canvas - DISABLED
   // We now use frame-with-bbox from yolov8 which already has accurate bboxes drawn
   // No need to draw our own canvas bboxes - this avoids mismatches
-  useEffect(() => {
-    console.log('📹 Using frame with yolov8 bboxes - canvas drawing disabled');
-  }, [selectedDetection]);
-
-  const selectedImageUrl = getFrameImageUrl(selectedDetection);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -1010,17 +1014,18 @@ export default function DashboardPage({ user, onSignOut }) {
                 position: 'relative'
               }}>
                 {selectedDetection && selectedImageUrl ? (
-                  <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <canvas
-                      ref={canvasRef}
+                  <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <img
+                      src={selectedImageUrl}
+                      alt="Frame with detections"
                       style={{
                         maxWidth: '100%',
                         maxHeight: '100%',
-                        display: 'block',
-                        border: selectedDetection.detections && selectedDetection.detections.length > 0 ? '2px solid #10b981' : 'none',
-                        cursor: 'pointer'
+                        objectFit: 'contain',
+                        border: selectedDetection.detectionCount && selectedDetection.detectionCount > 0 ? '2px solid #10b981' : '2px solid #d1d5db',
+                        cursor: 'pointer',
+                        borderRadius: '4px'
                       }}
-                      alt="Frame with detections"
                       onClick={() => {
                         if (selectedDetection && selectedImageUrl) {
                           setModalImageUrl(selectedImageUrl);
