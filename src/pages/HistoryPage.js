@@ -14,6 +14,7 @@ const buildHttpsUrlFromS3 = (s3Url) => {
 
 const getFrameLabelsUrl = (frame) => {
   if (!frame) return '';
+  if (frame.fullLabelsUrl) return frame.fullLabelsUrl;
   if (frame.s3LabelsPath) return buildHttpsUrlFromS3(frame.s3LabelsPath);
 
   const source = frame.s3UrlWithoutBbox || frame.fullImageUrlWithoutBbox || frame.fullImageUrl || '';

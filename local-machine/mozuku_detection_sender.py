@@ -288,6 +288,56 @@ class DetectionSender:
                 'confidence': float(det.get('confidence', 0.0))
             })
         return normalized
+
+    def _iou(self, a, b):
+        """Compute IoU for two bboxes in (x1, y1, x2, y2) format."""
+        ax1, ay1, ax2, ay2 = a
+        bx1, by1, bx2, by2 = b
+        inter_x1 = max(ax1, bx1)
+        inter_y1 = max(ay1, by1)
+        inter_x2 = min(ax2, bx2)
+        inter_y2 = min(ay2, by2)
+        inter_w = max(0, inter_x2 - inter_x1)
+        inter_h = max(0, inter_y2 - inter_y1)
+        inter_area = inter_w * inter_h
+        area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)
+        area_b = max(0, bx2 - bx1) * max(0, by2 - by1)
+        union = area_a + area_b - inter_area
+        return (inter_area / union) if union > 0 else 0.0
+
+    def dedupe_detections(self, detections, iou_threshold=0.7):
+        """Remove near-duplicate detections using IoU NMS."""
+        if not detections:
+            return []
+
+        # Build list with bbox and confidence
+        items = []
+        for det in detections:
+            bbox = det.get('bbox', {})
+            x = float(bbox.get('x', 0))
+            y = float(bbox.get('y', 0))
+            w = float(bbox.get('width', 0))
+            h = float(bbox.get('height', 0))
+            if w <= 0 or h <= 0:
+                continue
+            x1, y1, x2, y2 = x, y, x + w, y + h
+            conf = float(det.get('confidence', 0.0))
+            items.append((conf, (x1, y1, x2, y2), det))
+
+        # Sort by confidence desc
+        items.sort(key=lambda t: t[0], reverse=True)
+        kept = []
+
+        for conf, bbox, det in items:
+            should_keep = True
+            for _, kept_bbox, _ in kept:
+                if self._iou(bbox, kept_bbox) >= iou_threshold:
+                    should_keep = False
+                    break
+            if should_keep:
+                kept.append((conf, bbox, det))
+
+        return [det for _, _, det in kept]
     
     def save_impurity_to_dynamodb(self, impurity_id, timestamp, s3_url, detection):
         """Save impurity metadata to DynamoDB"""
@@ -417,9 +467,20 @@ class DetectionSender:
             # This ensures cropped images don't have bounding boxes on them
             cropped_images = self.extract_and_upload_cropped_images(frame_raw, detections, timestamp)
 
+            # De-duplicate detections to avoid repeated boxes across near-identical frames
+            deduped_detections = self.dedupe_detections(detections)
+            if len(deduped_detections) != len(detections):
+                print(f"   🔁 Deduped detections: {len(detections)} -> {len(deduped_detections)}")
+
+            # If still multiple detections, keep only the highest confidence
+            if len(deduped_detections) > 1:
+                deduped_detections.sort(key=lambda d: float(d.get('confidence', 0.0)), reverse=True)
+                deduped_detections = [deduped_detections[0]]
+                print("   ✅ Keeping top-1 detection by confidence")
+
             # Convert yolov8 detections to YOLO normalized labels
             frame_h, frame_w = frame_raw.shape[:2]
-            normalized_detections = self.normalize_detections(detections, frame_w, frame_h)
+            normalized_detections = self.normalize_detections(deduped_detections, frame_w, frame_h)
 
             # Upload YOLO labels as txt file (same folder as clean frame)
             coords_key = f"{self.user_id}/{timestamp}/frame-no-bbox.txt"
@@ -545,15 +606,11 @@ if ROS2_AVAILABLE:
                 # Store frame timestamp with detection to group by frame later
                 frame_timestamp = time.time()
                 
-                # Ensure we have the annotated frame
-                if self.last_annotated_frame is None:
-                    self.get_logger().warn(f"⚠️ WARNING: No annotated frame captured yet! Using raw frame instead.")
-                
                 detection = {
                     'label': label,
                     'confidence': confidence,
                     'bbox': bbox_data,
-                    'frame_with_bbox': self.last_annotated_frame.copy() if self.last_annotated_frame is not None else self.last_frame.copy() if self.last_frame is not None else None,
+                    'frame_with_bbox': self.last_annotated_frame.copy() if self.last_annotated_frame is not None else None,
                     'frame_raw': self.last_frame.copy() if self.last_frame is not None else None,
                     'frame_timestamp': frame_timestamp
                 }
@@ -598,9 +655,12 @@ if ROS2_AVAILABLE:
                     frame_with_bbox = first_detection.get('frame_with_bbox')
                     frame_raw = first_detection.get('frame_raw')
                     
-                    # Skip sending if frames aren't synchronized yet
-                    if frame_with_bbox is None or frame_raw is None:
-                        self.get_logger().debug(f"⏳ Waiting for synchronized frames... (buffer: {len(frame_detections)} detections)")
+                    # Skip sending if annotated frame isn't available
+                    if frame_with_bbox is None:
+                        self.get_logger().warn("⚠️ Missing annotated frame from yolov8 node. Skipping upload.")
+                        return
+                    if frame_raw is None:
+                        self.get_logger().warn("⚠️ Missing raw frame. Skipping upload.")
                         return
                     
                     # Update buffer to only keep detections not being sent
