@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
@@ -14,20 +14,17 @@ const buildHttpsUrlFromS3 = (s3Url) => {
 const getFrameImageUrl = (frame) => {
   if (!frame) return '';
   
-  // IMPORTANT: Use frame WITH bbox from yolov8 node
-  // This frame already has the accurate bboxes drawn by yolov8
-  // No need to draw our own red bboxes - use what yolov8 provides
-  
+  // Use frame WITHOUT bbox - we will draw red bboxes on clean frame
   console.log('🔍 Frame URL fields available:', {
-    fullImageUrlWithBbox: !!frame.fullImageUrlWithBbox,
-    s3UrlWithBbox: !!frame.s3UrlWithBbox,
+    fullImageUrlWithoutBbox: !!frame.fullImageUrlWithoutBbox,
+    s3UrlWithoutBbox: !!frame.s3UrlWithoutBbox,
     fullImageUrl: !!frame.fullImageUrl
   });
   
-  // Use frame WITH bbox (already has accurate yolov8 detections)
-  let chosen = frame.fullImageUrlWithBbox || frame.s3UrlWithBbox || frame.fullImageUrl || '';
+  // Use frame WITHOUT bbox so we can draw detection bboxes on it
+  let chosen = frame.fullImageUrlWithoutBbox || frame.s3UrlWithoutBbox || frame.fullImageUrl || '';
   
-  console.log('✅ Using frame WITH yolov8 bbox:', chosen?.substring(0, 80) + '...');
+  console.log('✅ Using clean frame WITHOUT bbox:', chosen?.substring(0, 80) + '...');
   
   return buildHttpsUrlFromS3(chosen);
 };
@@ -61,6 +58,7 @@ export default function DashboardPage({ user, onSignOut }) {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     // Load stats when component mounts
@@ -91,8 +89,58 @@ export default function DashboardPage({ user, onSignOut }) {
     if (selectedDetection) {
       const imageUrl = getFrameImageUrl(selectedDetection);
       setSelectedImageUrl(imageUrl);
+      
+      // Draw red bboxes on canvas after image loads
+      if (canvasRef.current && selectedDetection.detections && selectedDetection.detections.length > 0) {
+        console.log('📍 Will draw bboxes on canvas:', selectedDetection.detections);
+      }
     }
   }, [selectedDetection]);
+
+  // Draw detection bboxes on canvas
+  useEffect(() => {
+    if (!canvasRef.current || !selectedDetection || !selectedImageUrl) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw the clean frame
+      ctx.drawImage(img, 0, 0);
+      
+      // Draw red bboxes for each detection
+      if (selectedDetection.detections && selectedDetection.detections.length > 0) {
+        selectedDetection.detections.forEach((detection) => {
+          if (detection && detection.x !== undefined && detection.y !== undefined && detection.w !== undefined && detection.h !== undefined) {
+            // Convert normalized YOLO format (0-1) to pixel coordinates
+            const x1 = detection.x * canvas.width;
+            const y1 = detection.y * canvas.height;
+            const x2 = (detection.x + detection.w) * canvas.width;
+            const y2 = (detection.y + detection.h) * canvas.height;
+            
+            // Draw red bbox
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.rect(x1, y1, x2 - x1, y2 - y1);
+            ctx.stroke();
+            
+            console.log(`🎯 Drew red bbox at (${x1}, ${y1}) - (${x2}, ${y2})`);
+          }
+        });
+      }
+    };
+    
+    img.onerror = () => {
+      console.error('❌ Failed to load image for canvas drawing:', selectedImageUrl);
+    };
+    
+    img.src = selectedImageUrl;
+  }, [selectedImageUrl, selectedDetection]);
 
 
   const getAuthToken = () => {
@@ -1014,17 +1062,17 @@ export default function DashboardPage({ user, onSignOut }) {
               }}>
                 {selectedDetection && selectedImageUrl ? (
                   <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                    <img
-                      src={selectedImageUrl}
-                      alt="Frame with detections"
+                    <canvas
+                      ref={canvasRef}
                       style={{
                         maxWidth: '100%',
                         maxHeight: '100%',
-                        objectFit: 'contain',
+                        display: 'block',
                         border: selectedDetection.detectionCount && selectedDetection.detectionCount > 0 ? '2px solid #10b981' : '2px solid #d1d5db',
                         cursor: 'pointer',
                         borderRadius: '4px'
                       }}
+                      alt="Frame with detections"
                       onClick={() => {
                         if (selectedDetection && selectedImageUrl) {
                           setModalImageUrl(selectedImageUrl);
