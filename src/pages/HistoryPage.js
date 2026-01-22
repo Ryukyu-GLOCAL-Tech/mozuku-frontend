@@ -31,8 +31,8 @@ const parseBboxText = (text) => {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(/\s+/).map(Number))
-    .filter((arr) => arr.length >= 4 && arr.every((n) => Number.isFinite(n)))
-    .map(([x1, y1, x2, y2]) => [x1, y1, x2, y2]);
+    .filter((arr) => arr.length >= 5 && arr.every((n) => Number.isFinite(n)))
+    .map(([cls, x, y, w, h]) => ({ cls, x, y, w, h }));
 };
 
 export default function HistoryPage({ user, onSignOut }) {
@@ -257,10 +257,14 @@ export default function HistoryPage({ user, onSignOut }) {
       // Draw the clean frame
       ctx.drawImage(img, 0, 0);
       
-      // Draw red bboxes using coordinates from txt file
+      // Draw red bboxes using YOLO labels from txt file
       if (currentFrameBboxes.length > 0) {
         let bboxCount = 0;
-        currentFrameBboxes.forEach(([x1, y1, x2, y2]) => {
+        currentFrameBboxes.forEach(({ x, y, w, h }) => {
+          const x1 = (x - w / 2) * canvas.width;
+          const y1 = (y - h / 2) * canvas.height;
+          const x2 = (x + w / 2) * canvas.width;
+          const y2 = (y + h / 2) * canvas.height;
           ctx.strokeStyle = '#ff0000';
           ctx.lineWidth = 3;
           ctx.rect(x1, y1, x2 - x1, y2 - y1);

@@ -30,8 +30,8 @@ const parseBboxText = (text) => {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(/\s+/).map(Number))
-    .filter((arr) => arr.length >= 4 && arr.every((n) => Number.isFinite(n)))
-    .map(([x1, y1, x2, y2]) => [x1, y1, x2, y2]);
+    .filter((arr) => arr.length >= 5 && arr.every((n) => Number.isFinite(n)))
+    .map(([cls, x, y, w, h]) => ({ cls, x, y, w, h }));
 };
 
 const getFrameImageUrl = (frame) => {
@@ -152,10 +152,15 @@ export default function DashboardPage({ user, onSignOut }) {
       // Draw the clean frame
       ctx.drawImage(img, 0, 0);
       
-      // Draw red bboxes using coordinates from txt file
+      // Draw red bboxes using YOLO labels from txt file
       if (selectedBboxes.length > 0) {
         let bboxCount = 0;
-        selectedBboxes.forEach(([x1, y1, x2, y2]) => {
+        selectedBboxes.forEach(({ x, y, w, h }) => {
+          // YOLO normalized -> pixel coords
+          const x1 = (x - w / 2) * canvas.width;
+          const y1 = (y - h / 2) * canvas.height;
+          const x2 = (x + w / 2) * canvas.width;
+          const y2 = (y + h / 2) * canvas.height;
           ctx.strokeStyle = '#ff0000';
           ctx.lineWidth = 3;
           ctx.rect(x1, y1, x2 - x1, y2 - y1);
@@ -1040,7 +1045,7 @@ export default function DashboardPage({ user, onSignOut }) {
                     onMouseOver={(e) => e.target.style.opacity = '0.8'}
                     onMouseOut={(e) => e.target.style.opacity = '1'}
                   >
-                    Frame {idx + 1} ({det.detectionCount || det.detections?.length || 0} {(det.detectionCount || det.detections?.length || 0) === 1 ? 'impurity' : 'impurities'})
+                    Frame {idx + 1} ({det.frameId === selectedDetection?.frameId ? (selectedBboxes.length || det.detectionCount || det.detections?.length || 0) : (det.detectionCount || det.detections?.length || 0)} {(det.frameId === selectedDetection?.frameId ? (selectedBboxes.length || det.detectionCount || det.detections?.length || 0) : (det.detectionCount || det.detections?.length || 0)) === 1 ? 'impurity' : 'impurities'})
                   </button>
                 ))}
               </div>

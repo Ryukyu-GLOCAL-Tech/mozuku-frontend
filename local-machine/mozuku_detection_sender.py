@@ -212,27 +212,20 @@ class DetectionSender:
             print(f"   Traceback: {traceback.format_exc()}")
             return None
 
-    def upload_pixel_coordinates_to_s3(self, bboxes, frame_width, frame_height, bucket, key):
+    def upload_yolo_labels_to_s3(self, detections, bucket, key):
         """
-        Upload extracted bbox coordinates as txt file to S3
-        Format: Each line = "x1 y1 x2 y2" (pixel coordinates)
-        
-        Args:
-            bboxes: List of bbox tuples [(x1,y1,x2,y2), ...]
-            frame_width: Frame width in pixels
-            frame_height: Frame height in pixels
-            bucket: S3 bucket
-            key: S3 key path
-        
-        Returns:
-            S3 URL if successful
+        Upload YOLO labels to S3
+        Format: class x_center y_center width height (normalized 0-1)
         """
         try:
             lines = []
-            for bbox in bboxes:
-                x1, y1, x2, y2 = bbox
-                # Store as: x1 y1 x2 y2 (pixel coordinates, not normalized)
-                line = f"{int(x1)} {int(y1)} {int(x2)} {int(y2)}"
+            for det in detections:
+                class_id = int(det.get('class', 0))
+                x = float(det.get('x', 0))
+                y = float(det.get('y', 0))
+                w = float(det.get('w', 0))
+                h = float(det.get('h', 0))
+                line = f"{class_id} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
                 lines.append(line)
             
             if not lines:
@@ -240,7 +233,7 @@ class DetectionSender:
                 return None
             
             content = '\n'.join(lines)
-            print(f"   📝 Uploading {len(bboxes)} bbox coordinates to S3")
+            print(f"   📝 Uploading {len(lines)} YOLO labels to S3")
             
             response = s3_client.put_object(
                 Bucket=bucket,
@@ -249,10 +242,8 @@ class DetectionSender:
                 ContentType='text/plain',
                 Metadata={
                     'timestamp': datetime.utcnow().isoformat(),
-                    'bbox_count': str(len(bboxes)),
-                    'format': 'pixel_coordinates',
-                    'frame_width': str(frame_width),
-                    'frame_height': str(frame_height)
+                    'detection_count': str(len(lines)),
+                    'format': 'yolo'
                 }
             )
             print(f"   ✅ Coordinates uploaded: {response.get('ResponseMetadata', {}).get('HTTPStatusCode')}")
@@ -426,24 +417,14 @@ class DetectionSender:
             # This ensures cropped images don't have bounding boxes on them
             cropped_images = self.extract_and_upload_cropped_images(frame_raw, detections, timestamp)
 
-            # Convert yolov8 detection bboxes to pixel coordinates
+            # Convert yolov8 detections to YOLO normalized labels
             frame_h, frame_w = frame_raw.shape[:2]
-            pixel_bboxes = []
-            for det in detections:
-                bbox = det.get('bbox', {})
-                x = int(bbox.get('x', 0))
-                y = int(bbox.get('y', 0))
-                w = int(bbox.get('width', 0))
-                h = int(bbox.get('height', 0))
-                if w > 0 and h > 0:
-                    pixel_bboxes.append((x, y, x + w, y + h))
+            normalized_detections = self.normalize_detections(detections, frame_w, frame_h)
 
-            # Upload pixel coordinates as txt file (same folder as clean frame)
+            # Upload YOLO labels as txt file (same folder as clean frame)
             coords_key = f"{self.user_id}/{timestamp}/frame-no-bbox.txt"
-            coords_url = self.upload_pixel_coordinates_to_s3(
-                pixel_bboxes,
-                frame_w,
-                frame_h,
+            coords_url = self.upload_yolo_labels_to_s3(
+                normalized_detections,
                 FRAMES_WITHOUT_BBOX_BUCKET,
                 coords_key
             )
@@ -454,12 +435,12 @@ class DetectionSender:
                 timestamp,
                 frame_with_url,
                 frame_without_url,
-                len(pixel_bboxes),
-                pixel_bboxes
+                len(normalized_detections),
+                normalized_detections
             )
             
             if success:
-                print(f"✅ Frame saved: {frame_id} with {len(pixel_bboxes)} detected impurities\n")
+                print(f"✅ Frame saved: {frame_id} with {len(normalized_detections)} detected impurities\n")
                 return True
             else:
                 return False
