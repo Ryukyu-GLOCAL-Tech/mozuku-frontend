@@ -13,16 +13,22 @@ const buildHttpsUrlFromS3 = (s3Url) => {
 
 const getFrameImageUrl = (frame) => {
   if (!frame) return '';
-  // Prefer frame WITHOUT bbox to draw our own red bbox on top
-  // This avoids overlapping bboxes from yolov8 node
-  const candidates = [
-    frame.fullImageUrlWithoutBbox,
-    frame.s3UrlWithoutBbox,
-    frame.fullImageUrlWithBbox,
-    frame.fullImageUrl,
-    frame.s3UrlWithBbox
-  ].filter(Boolean);
-  const chosen = candidates[0] || '';
+  
+  // IMPORTANT: Use frame WITH bbox from yolov8 node
+  // This frame already has the accurate bboxes drawn by yolov8
+  // No need to draw our own red bboxes - use what yolov8 provides
+  
+  console.log('🔍 Frame URL fields available:', {
+    fullImageUrlWithBbox: !!frame.fullImageUrlWithBbox,
+    s3UrlWithBbox: !!frame.s3UrlWithBbox,
+    fullImageUrl: !!frame.fullImageUrl
+  });
+  
+  // Use frame WITH bbox (already has accurate yolov8 detections)
+  let chosen = frame.fullImageUrlWithBbox || frame.s3UrlWithBbox || frame.fullImageUrl || '';
+  
+  console.log('✅ Using frame WITH yolov8 bbox:', chosen?.substring(0, 80) + '...');
+  
   return buildHttpsUrlFromS3(chosen);
 };
 
@@ -30,11 +36,13 @@ const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
   if (!detection) return null;
 
   if (Array.isArray(detection.bbox) && detection.bbox.length >= 4) {
+    console.log('✅ Using detection.bbox array:', detection.bbox);
     return detection.bbox;
   }
 
   const bboxObj = detection.bbox && typeof detection.bbox === 'object' ? detection.bbox : null;
   if (bboxObj && Number.isFinite(bboxObj.x) && Number.isFinite(bboxObj.y) && Number.isFinite(bboxObj.width) && Number.isFinite(bboxObj.height)) {
+    console.log('✅ Using detection.bbox object - pixel coords:', bboxObj);
     const x1 = bboxObj.x;
     const y1 = bboxObj.y;
     const x2 = bboxObj.x + bboxObj.width;
@@ -59,12 +67,19 @@ const resolveBboxPixels = (detection, imgWidth, imgHeight) => {
       const x2 = Math.min(imgWidth, (xCenter + w / 2) * imgWidth);
       const y2 = Math.min(imgHeight, (yCenter + h / 2) * imgHeight);
       
-      console.log(`Converting YOLO format: center=(${xCenter.toFixed(4)}, ${yCenter.toFixed(4)}), size=(${w.toFixed(4)}, ${h.toFixed(4)}) -> pixels: (${x1.toFixed(0)}, ${y1.toFixed(0)}, ${x2.toFixed(0)}, ${y2.toFixed(0)}) on ${imgWidth}x${imgHeight}`);
+      console.log(`📐 Converting YOLO normalized format to pixels:`, {
+        normalized: { xCenter: xCenter.toFixed(4), yCenter: yCenter.toFixed(4), w: w.toFixed(4), h: h.toFixed(4) },
+        image: `${imgWidth}x${imgHeight}`,
+        pixels: { x1: x1.toFixed(0), y1: y1.toFixed(0), x2: x2.toFixed(0), y2: y2.toFixed(0) }
+      });
       
       return [x1, y1, x2, y2];
+    } else {
+      console.log('❌ Values not normalized (> 1):', { xCenter, yCenter, w, h });
     }
   }
 
+  console.log('❌ Could not resolve bbox from detection:', detection);
   return null;
 };
 
@@ -383,159 +398,11 @@ export default function DashboardPage({ user, onSignOut }) {
     loadDetections(true);
   };
 
-  // Draw bounding boxes on canvas
+  // Draw bounding boxes on canvas - DISABLED
+  // We now use frame-with-bbox from yolov8 which already has accurate bboxes drawn
+  // No need to draw our own canvas bboxes - this avoids mismatches
   useEffect(() => {
-    const imageUrl = getFrameImageUrl(selectedDetection);
-    if (!selectedDetection || !imageUrl || !canvasRef.current) {
-      console.log('Canvas effect skipped:', { selectedDetection: !!selectedDetection, imageUrl, canvasRef: !!canvasRef.current });
-      return;
-    }
-
-    console.log('Drawing frame with detections:', {
-      frameId: selectedDetection.frameId,
-      imageUrl,
-      detectionCount: selectedDetection.detectionCount,
-      detections: selectedDetection.detections
-    });
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      console.log('Image loaded:', { width: img.width, height: img.height });
-      // Set canvas size to match image
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw the image
-      ctx.drawImage(img, 0, 0);
-      
-      // Draw bounding boxes if detections exist
-      const detectionsList = selectedDetection.detections || [];
-      console.log('Drawing detections:', detectionsList);
-      console.log(`Total detections to draw: ${detectionsList.length}`);
-      
-      if (detectionsList && detectionsList.length > 0) {
-        detectionsList.forEach((detection, idx) => {
-          const bbox = resolveBboxPixels(detection, img.width, img.height);
-          console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
-          
-          if (bbox && bbox.length >= 4) {
-            let [x1, y1, x2, y2] = bbox;
-            
-            // Ensure valid coordinates (x2 > x1, y2 > y1)
-            if (x2 <= x1) [x1, x2] = [x2, x1];
-            if (y2 <= y1) [y1, y2] = [y2, y1];
-            
-            const width = x2 - x1;
-            const height = y2 - y1;
-            
-            // Only draw if bbox has valid dimensions
-            if (width > 0 && height > 0) {
-              console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
-              
-              // Draw rectangle
-              ctx.strokeStyle = '#ff0000';
-              ctx.lineWidth = 3;
-              ctx.strokeRect(x1, y1, width, height);
-              
-              // Draw label background
-              ctx.fillStyle = '#ff0000';
-              ctx.font = 'bold 14px Arial';
-              const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
-              const textMetrics = ctx.measureText(label);
-              const labelPadding = 10;
-              const labelX = x1;
-              const labelY = Math.max(20, y1 - 25);
-              ctx.fillRect(labelX, labelY, textMetrics.width + labelPadding, 25);
-              
-              // Draw label text
-              ctx.fillStyle = '#ffffff';
-              ctx.fillText(label, labelX + 5, labelY + 17);
-            } else {
-              console.log(`  Skipping detection ${idx}: invalid dimensions (${width.toFixed(0)}x${height.toFixed(0)})`);
-            }
-          } else {
-            console.log(`  Skipping detection ${idx}: invalid bbox`);
-          }
-        });
-      } else {
-        console.log('No detections found in selectedDetection');
-      }
-    };
-    
-    let retriedWithoutCors = false;
-    img.onerror = (err) => {
-      console.error('Failed to load image:', err);
-      if (!retriedWithoutCors) {
-        retriedWithoutCors = true;
-        const fallbackImg = new Image();
-        fallbackImg.onload = () => {
-          console.log('Image loaded without CORS:', { width: fallbackImg.width, height: fallbackImg.height });
-          canvas.width = fallbackImg.width;
-          canvas.height = fallbackImg.height;
-          
-          // Clear canvas
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
-          ctx.drawImage(fallbackImg, 0, 0);
-
-          const detectionsList = selectedDetection.detections || [];
-          console.log(`Drawing ${detectionsList.length} detections on fallback image`);
-          
-          if (detectionsList && detectionsList.length > 0) {
-            detectionsList.forEach((detection, idx) => {
-              const bbox = resolveBboxPixels(detection, fallbackImg.width, fallbackImg.height);
-              console.log(`Detection ${idx}:`, { label: detection.label, bbox, confidence: detection.confidence });
-              if (bbox && bbox.length >= 4) {
-                let [x1, y1, x2, y2] = bbox;
-                
-                // Ensure valid coordinates (x2 > x1, y2 > y1)
-                if (x2 <= x1) [x1, x2] = [x2, x1];
-                if (y2 <= y1) [y1, y2] = [y2, y1];
-                
-                const width = x2 - x1;
-                const height = y2 - y1;
-                
-                // Only draw if bbox has valid dimensions
-                if (width > 0 && height > 0) {
-                  console.log(`  Drawing bbox ${idx}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) size ${width.toFixed(0)}x${height.toFixed(0)}`);
-                  
-                  ctx.strokeStyle = '#ff0000';
-                  ctx.lineWidth = 3;
-                  ctx.strokeRect(x1, y1, width, height);
-                  ctx.fillStyle = '#ff0000';
-                  ctx.font = 'bold 14px Arial';
-                  const label = `${detection.label} ${(detection.confidence * 100).toFixed(1)}%`;
-                  const textMetrics = ctx.measureText(label);
-                  const labelPadding = 10;
-                  const labelX = x1;
-                  const labelY = Math.max(20, y1 - 25);
-                  ctx.fillRect(labelX, labelY, textMetrics.width + labelPadding, 25);
-                  ctx.fillStyle = '#ffffff';
-                  ctx.fillText(label, labelX + 5, labelY + 17);
-                } else {
-                  console.log(`  Skipping detection ${idx}: invalid dimensions (${width.toFixed(0)}x${height.toFixed(0)})`);
-                }
-              }
-            });
-          }
-        };
-        fallbackImg.onerror = (fallbackErr) => {
-          console.error('Failed to load image without CORS:', fallbackErr);
-        };
-        console.log('Retrying image load without CORS:', imageUrl);
-        fallbackImg.src = imageUrl;
-      }
-    };
-
-    img.crossOrigin = 'anonymous';
-    console.log('Setting image src:', imageUrl);
-    img.src = imageUrl;
+    console.log('📹 Using frame with yolov8 bboxes - canvas drawing disabled');
   }, [selectedDetection]);
 
   const selectedImageUrl = getFrameImageUrl(selectedDetection);

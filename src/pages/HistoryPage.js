@@ -971,30 +971,7 @@ export default function HistoryPage({ user, onSignOut }) {
                     />
                   ) : sessionFrames[currentFrameIndex].labelingStatus === 'verified' ? (
                     <>
-                      {/* For verified frames, use BboxAnnotator in read-only mode to show updated bboxes */}
-                      <div style={{
-                        backgroundColor: '#0f172a',
-                        borderRadius: '8px',
-                        padding: '10px',
-                        marginBottom: '15px'
-                      }}>
-                        {console.log('🎨 Rendering verified frame with BboxAnnotator:') || null}
-                        {console.log('  Frame ID:', sessionFrames[currentFrameIndex].frameId?.substring(0, 8)) || null}
-                        {console.log('  Detections:', sessionFrames[currentFrameIndex].detections) || null}
-                        {console.log('  Detections count:', sessionFrames[currentFrameIndex].detections?.length) || null}
-                        <BboxAnnotator 
-                          imageUrl={sessionFrames[currentFrameIndex].s3UrlWithoutBbox}
-                          detections={sessionFrames[currentFrameIndex].detections || []}
-                          onSave={() => {}}
-                          onCancel={() => {}}
-                          saving={false}
-                          readOnly={true}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Frame Image - for auto-labeled frames, show original without-bbox image and draw red bbox on top */}
+                      {/* For verified frames, show frame with yolov8 bboxes */}
                       <div style={{
                         backgroundColor: '#0f172a',
                         borderRadius: '8px',
@@ -1002,13 +979,35 @@ export default function HistoryPage({ user, onSignOut }) {
                         marginBottom: '15px',
                         textAlign: 'center'
                       }}>
-                        <BboxAnnotator 
-                          imageUrl={sessionFrames[currentFrameIndex].s3UrlWithoutBbox}
-                          detections={sessionFrames[currentFrameIndex].detections || []}
-                          onSave={() => {}}
-                          onCancel={() => {}}
-                          saving={false}
-                          readOnly={true}
+                        <img 
+                          src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
+                          alt={`Verified Frame ${currentFrameIndex + 1}`}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '500px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* For auto-labeled frames, show frame with yolov8 bboxes */}
+                      <div style={{
+                        backgroundColor: '#0f172a',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        marginBottom: '15px',
+                        textAlign: 'center'
+                      }}>
+                        <img 
+                          src={sessionFrames[currentFrameIndex].s3UrlWithBbox}
+                          alt={`Frame ${currentFrameIndex + 1}`}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '500px',
+                            borderRadius: '4px'
+                          }}
                         />
                       </div>
                     </>
