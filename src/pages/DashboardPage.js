@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
@@ -61,7 +61,6 @@ export default function DashboardPage({ user, onSignOut }) {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
-  const canvasRef = useRef(null);
 
   useEffect(() => {
     // Load stats when component mounts
